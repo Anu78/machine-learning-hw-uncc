@@ -65,7 +65,7 @@ def main():
 
     y = np.loadtxt("./dataset.csv", delimiter=',', usecols=[3])
 
-    gradientDescent(x1, y, "x1", learningRate=0.005, epochs=994)
+    gradientDescent(x1, y, "x1", learningRate=0.005, epochs=1000)
 
     # gradientDescent(x2,y, "x2", learningRate=0.01, epochs=5) # nonsense data
 
