@@ -2,13 +2,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def gradientDescent(X, y, learningRate=0.01, epochs=994, theta=None, loss_threshold = 1.5e-3):
+
+def gradientDescent(X, y, learningRate=0.01, epochs=994, theta=None, loss_threshold=1e-3):
     if theta is None:
         # Initialize the weights (theta) with zeros
         theta = np.zeros(X.shape[1])
-    
-    n = float(len(y))
 
+    n = float(len(y))
 
     loss_y = np.zeros(epochs)
 
@@ -25,7 +25,7 @@ def gradientDescent(X, y, learningRate=0.01, epochs=994, theta=None, loss_thresh
             print(f"stopping early at epoch {i+1} due to loss convergence.")
             actual_epochs = i+1
             break
-            
+
         previous_loss = loss_y[i]
 
     print(f"theta values: {theta}")
@@ -43,6 +43,7 @@ def gradientDescent(X, y, learningRate=0.01, epochs=994, theta=None, loss_thresh
 
     return theta
 
+
 def plotData(x, y, xtitle, slope=None, intercept=None):
     plt.plot(x, y)
 
@@ -56,12 +57,14 @@ def plotData(x, y, xtitle, slope=None, intercept=None):
     plt.title(f"{xtitle} vs y")
     plt.show()
 
-def predictResults(x1,x2,x3, theta):
+
+def predictResults(x1, x2, x3, theta):
     return theta[0] + theta[1] * x1 + theta[2] * x2 + theta[3] * x3
+
 
 def main():
     data = np.loadtxt("./dataset.csv", delimiter=',')
-    
+
     # Separate the input features (x1, x2, x3) and the output variable (y)
     X = data[:, :3]  # Select columns 0, 1, and 2 for x1, x2, and x3
     y = data[:, 3]   # Select column 3 for the output variable
@@ -87,12 +90,12 @@ def main():
     plt.show()
 
     # predict future results
-    prediction1 = predictResults(1,1,1, theta)
-    prediction2 = predictResults(2,0,4, theta)
-    prediction3 = predictResults(3,2,1, theta)
+    prediction1 = predictResults(1, 1, 1, theta)
+    prediction2 = predictResults(2, 0, 4, theta)
+    prediction3 = predictResults(3, 2, 1, theta)
 
-    print(f"(1,1,1): {prediction1}\n(2,0,4): {prediction2}\n(3,2,1): {prediction3}")
-    
+    print(
+        f"Predicted Values:\n(1,1,1): {prediction1}\n(2,0,4): {prediction2}\n(3,2,1): {prediction3}")
 
 
 if __name__ == "__main__":

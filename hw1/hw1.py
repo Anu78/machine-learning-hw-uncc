@@ -4,7 +4,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-
 def gradientDescent(x, y, independent, learningRate=0.01, epochs=1000, m=0, b=0, loss_threshold=1e-4):
 
     n = float(len(x))
@@ -65,11 +64,11 @@ def main():
 
     y = np.loadtxt("./dataset.csv", delimiter=',', usecols=[3])
 
-    gradientDescent(x1, y, "x1", learningRate=0.005, epochs=1000)
+    gradientDescent(x1, y, "x1", learningRate=0.01, epochs=1000)
 
-    # gradientDescent(x2,y, "x2", learningRate=0.01, epochs=5) # nonsense data
+    gradientDescent(x2,y, "x2", learningRate=0.01, epochs=5) # nonsense data
 
-    # gradientDescent(x3,y, "x3", learningRate=0.01, epochs=994) # more nonsense data
+    gradientDescent(x3,y, "x3", learningRate=0.01, epochs=994) # more nonsense data
 
 
 if __name__ == "__main__":
