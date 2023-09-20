@@ -3,8 +3,10 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+seed = 826
+np.random.seed(seed)
 
-def normalize(column, featureRange=(1, 5)):
+def normalizeCol(column, featureRange=(1, 5)):
    
     column = np.array(column)
     minVal = column.min()
@@ -17,38 +19,46 @@ def normalize(column, featureRange=(1, 5)):
     return scaled_column
 
 
-def costFunction(X, y, theta):
+def costFunction(X, y, theta, lambda_reg):
     predictions = np.dot(X, theta)
     error = predictions - y
     cost = np.sum(error ** 2) / (2*len(y))
 
+    cost += lambda_reg * np.sum(np.abs(theta))
+
     return cost
 
 
-def multipleDescent(X, y, numFeatures, max_iterations=1000, learningRate=0.01, tolerance=1e-5):
-    theta = np.zeros(numFeatures)
+def multipleDescent(X, y, numFeatures, max_iterations=1000, learningRate=0.01, tolerance=1e-4, lambda_reg = 0.1):
+    theta = np.random.rand(numFeatures)
     previous_cost = float('-inf')
+    costs = []
 
-    for iterations in range(max_iterations):
-        # Calculate the gradient of the cost function
+    for it in range(max_iterations):
         gradient = np.dot(X.T, (np.dot(X, theta) - y)) / len(y)
+        l1Gradient = lambda_reg * np.sign(theta)
+        gradient += l1Gradient
 
-        # Update parameters
         theta -= learningRate * gradient
+        
+        current_cost = costFunction(X, y, theta, lambda_reg=lambda_reg)
+        costs.append(current_cost)
 
-        # Calculate the cost
-        current_cost = costFunction(X, y, theta)
-
-        # Stopping criterion
         if abs(previous_cost - current_cost) < tolerance:
             break
 
         previous_cost = current_cost
-
+ 
+    plt.plot(np.arange(0,it+1), costs)
+    plt.title(f"Cost over {it} epochs")
+    plt.xlabel("Epochs")
+    plt.ylabel("mse")
+    plt.show()
+    
     return theta
 
 
-def readCSV(filepath: str):
+def readCSV(filepath: str, normalize = True):
     dtypes = {
         'price': int,
         'area': int,
@@ -82,8 +92,9 @@ def readCSV(filepath: str):
     normalize_columns = ['stories', 'price',
                          'area', 'bedrooms', 'bathrooms', 'parking']
 
-    for col in normalize_columns:
-        df[col] = normalize(df[col])
+    if normalize:
+        for col in normalize_columns:
+            df[col] = normalizeCol(df[col])
 
     # assign inputs and output
     X = df[["area", "bedrooms", "bathrooms", "stories", "mainroad", "guestroom", "basement",
@@ -98,28 +109,16 @@ def readCSV(filepath: str):
 
 
 def validateData(Xvalid, yvalid, theta):
-    def evaluate(Xvalid, theta): return sum(
-        x * t for x, t in zip(Xvalid, theta))
-    columns = Xvalid.columns
-    squared_errors = []
-    for index in range(len(Xvalid)):
-        predicted_value = evaluate(Xvalid.values[index], theta)
-        error = (yvalid.values[index] - predicted_value) ** 2
-        squared_errors.append(error)
-
-        if index % 15 == 0:
-            for column, value in zip(columns, Xvalid.values[index]):
-                print(f"{column}: {value}", end='\t')
-            print(f"price: {yvalid.values[index]}")
-
-    mse = np.mean(squared_errors)
-    return mse
+    yTrue = []
+    for row in Xvalid.values:
+        yTrue.append(sum(np.multiply(row, theta)))
+    
+    return ((yTrue - yvalid) ** 2).mean()
 
 
 def main():
     (Xtrain, ytrain), (Xvalid, yvalid) = readCSV("./Housing.csv")
 
-    print(Xtrain, Xvalid, sep='\n\n')
     theta = multipleDescent(Xtrain, ytrain, Xtrain.shape[1], learningRate=0.078)
     feature_names = ["sq.ft", "beds", "baths", "story", "road",
                      "guest", "base", "heat", "aircon", "park", "pref", "furn"]
