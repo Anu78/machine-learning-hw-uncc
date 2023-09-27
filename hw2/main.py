@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-def normalizeCol(column, featureRange=(0,1)):
+def normalizeCol(column, featureRange=(1,5)):
 
     column = np.array(column)
     minVal = column.min()
@@ -143,8 +143,7 @@ def main():
     (xtrain, ytrain), (xvalid, yvalid) = readCSV("./Housing.csv") # unprocessed
     (nxtrain, nytrain), (nxvalid, nyvalid) = readCSV("./Housing.csv", normalize=True) # normalized
     (sxtrain, sytrain), (sxvalid, xyvalid) = readCSV("./Housing.csv", standardize=True) # standardized
-    
-    
+
     # training without normalization/standardization
     print("raw data training (subset)")
     features = ["area", "bedrooms", "bathrooms", "stories", "parking"]
@@ -158,27 +157,38 @@ def main():
     theta = multipleDescent(xtrain, ytrain, xtrain.shape[1], learningRate=0.1, paramPenalty=False)
 
     plotFeatures(features, theta)
-    
-    # train with normalization (no param penalty)
+
+
+    # train with normalization (subset)
     print("normalized subset")
     features = ["area", "bedrooms", "bathrooms", "stories", "parking"]
     theta = multipleDescent(nxtrain[features], nytrain, nxtrain[features].shape[1], learningRate=0.1, paramPenalty=False)
 
     plotFeatures(features, theta)
 
-    # train with standardization (no param penalty)
-    print("standardized (all columns)")
+    # train with standardization (subset)
+    print("standardized subset")
+    theta = multipleDescent(sxtrain[features], sytrain, sxtrain[features].shape[1], learningRate=0.1, paramPenalty=False)
+
+    plotFeatures(features, theta)
+
+    # train with normalization (all)
+    print("normalized (all columns)")
     features = ["sq.ft", "beds", "baths", "story", "road",
                 "guest", "base", "heat", "aircon", "park", "pref", "furn"]
+    theta = multipleDescent(nxtrain, nytrain, nxtrain.shape[1], learningRate=0.01, paramPenalty=False)
+    
+    plotFeatures(features, theta)
+    # train with standardization (all)
+    print("standardized (all columns)")
     theta = multipleDescent(sxtrain, sytrain, sxtrain.shape[1], learningRate=0.1, paramPenalty=False)
 
     plotFeatures(features, theta)
-    
     # train with parameter penalty (normalization) 
         
     print("Training with a subset of variables (with parameter penalty)")
     features = ["area", "bedrooms", "bathrooms", "stories", "parking"]
-    theta = multipleDescent(nxtrain[features], nytrain, nxtrain[features].shape[1], learningRate=0.1, paramPenalty=True, lambda_reg=0.05)
+    theta = multipleDescent(nxtrain[features], nytrain, nxtrain[features].shape[1], learningRate=0.08, paramPenalty=True, lambda_reg=0.01, tolerance=1e-4)
 
     plotFeatures(features, theta)
 
@@ -186,7 +196,7 @@ def main():
 
     print("Training with all variables (with parameter penalty)")
     theta = multipleDescent(
-        sxtrain, sytrain, sxtrain.shape[1], learningRate=0.01, paramPenalty=True, lambda_reg=0.01, tolerance=0.04)
+        sxtrain, sytrain, sxtrain.shape[1], learningRate=0.01, paramPenalty=True, lambda_reg=0.2, tolerance=1e-4)
     features = ["sq.ft", "beds", "baths", "story", "road",
                 "guest", "base", "heat", "aircon", "park", "pref", "furn"]
 
