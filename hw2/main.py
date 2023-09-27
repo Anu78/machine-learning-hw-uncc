@@ -3,44 +3,54 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-seed = 826
-np.random.seed(seed)
+def normalizeCol(column, featureRange=(0,1)):
 
-def normalizeCol(column, featureRange=(1, 5)):
-   
     column = np.array(column)
     minVal = column.min()
     maxVal = column.max()
 
     # Scale the column values to the specified featureRange
-    scaled_column = (column - minVal) * (featureRange[1] - featureRange[0]) / (maxVal - minVal) + featureRange[0]
+    scaled_column = (column - minVal) * \
+        (featureRange[1] - featureRange[0]) / \
+        (maxVal - minVal) + featureRange[0]
 
-   
     return scaled_column
 
+def standardizeCol(column):
+    column = np.array(column)
+    mean = np.mean(column)
+    std = np.std(column)
+
+    column = (column - mean) / std
+
+    return column
 
 def costFunction(X, y, theta, lambda_reg):
     predictions = np.dot(X, theta)
     error = predictions - y
     cost = np.sum(error ** 2) / (2*len(y))
 
-    cost += lambda_reg * np.sum(np.abs(theta))
+    if lambda_reg:
+        cost += lambda_reg * np.sum(np.abs(theta))
 
     return cost
 
 
-def multipleDescent(X, y, numFeatures, max_iterations=1000, learningRate=0.01, tolerance=1e-4, lambda_reg = 0.1):
-    theta = np.random.rand(numFeatures)
+def multipleDescent(X, y, numFeatures, max_iterations=1000, learningRate=0.01, tolerance=1e-3, lambda_reg=0.01, paramPenalty=False):
+    theta = np.zeros(numFeatures)
     previous_cost = float('-inf')
     costs = []
+
+    lambda_reg = lambda_reg if paramPenalty else False
 
     for it in range(max_iterations):
         gradient = np.dot(X.T, (np.dot(X, theta) - y)) / len(y)
         l1Gradient = lambda_reg * np.sign(theta)
-        gradient += l1Gradient
+        if paramPenalty:
+            gradient += l1Gradient
 
         theta -= learningRate * gradient
-        
+
         current_cost = costFunction(X, y, theta, lambda_reg=lambda_reg)
         costs.append(current_cost)
 
@@ -48,17 +58,19 @@ def multipleDescent(X, y, numFeatures, max_iterations=1000, learningRate=0.01, t
             break
 
         previous_cost = current_cost
- 
-    plt.plot(np.arange(0,it+1), costs)
+
+    plt.plot(np.arange(0, it+1), costs)
     plt.title(f"Cost over {it} epochs")
     plt.xlabel("Epochs")
     plt.ylabel("mse")
     plt.show()
-    
+
+    print(costs[-1])
+
     return theta
 
 
-def readCSV(filepath: str, normalize = True):
+def readCSV(filepath: str, normalize=False, standardize=False):
     dtypes = {
         'price': int,
         'area': int,
@@ -74,6 +86,7 @@ def readCSV(filepath: str, normalize = True):
         'prefarea': str,
         'furnishingstatus': str
     }
+
     df = pd.read_csv(filepath, dtype=dtypes)
     df.columns = [col.strip() for col in df.columns]  # remove extra whitespace
 
@@ -92,9 +105,11 @@ def readCSV(filepath: str, normalize = True):
     normalize_columns = ['stories', 'price',
                          'area', 'bedrooms', 'bathrooms', 'parking']
 
-    if normalize:
-        for col in normalize_columns:
+    for col in normalize_columns:
+        if normalize:
             df[col] = normalizeCol(df[col])
+        if standardize:
+            df[col] = standardizeCol(df[col])
 
     # assign inputs and output
     X = df[["area", "bedrooms", "bathrooms", "stories", "mainroad", "guestroom", "basement",
@@ -112,27 +127,70 @@ def validateData(Xvalid, yvalid, theta):
     yTrue = []
     for row in Xvalid.values:
         yTrue.append(sum(np.multiply(row, theta)))
-    
+
     return ((yTrue - yvalid) ** 2).mean()
 
 
-def main():
-    (Xtrain, ytrain), (Xvalid, yvalid) = readCSV("./Housing.csv")
-
-    theta = multipleDescent(Xtrain, ytrain, Xtrain.shape[1], learningRate=0.078)
-    feature_names = ["sq.ft", "beds", "baths", "story", "road",
-                     "guest", "base", "heat", "aircon", "park", "pref", "furn"]
-
-    plt.bar(feature_names, theta)
+def plotFeatures(featureNames, theta):
+    plt.bar(featureNames, theta)
     plt.xlabel("Features")
     plt.ylabel("Coefficients (Weights)")
     plt.title("Feature Importance")
     plt.show()
 
-    error = validateData(Xvalid, yvalid, theta)
 
-    print(f"mse: {round(error,4)}")
+def main():
+    (xtrain, ytrain), (xvalid, yvalid) = readCSV("./Housing.csv") # unprocessed
+    (nxtrain, nytrain), (nxvalid, nyvalid) = readCSV("./Housing.csv", normalize=True) # normalized
+    (sxtrain, sytrain), (sxvalid, xyvalid) = readCSV("./Housing.csv", standardize=True) # standardized
+    
+    
+    # training without normalization/standardization
+    print("raw data training (subset)")
+    features = ["area", "bedrooms", "bathrooms", "stories", "parking"]
+    theta = multipleDescent(xtrain[features], ytrain, xtrain[features].shape[1], learningRate=0.1, paramPenalty=False)
 
+    plotFeatures(features, theta)
+
+    print("raw data training (all)")
+    features = ["sq.ft", "beds", "baths", "story", "road",
+                "guest", "base", "heat", "aircon", "park", "pref", "furn"]
+    theta = multipleDescent(xtrain, ytrain, xtrain.shape[1], learningRate=0.1, paramPenalty=False)
+
+    plotFeatures(features, theta)
+    
+    # train with normalization (no param penalty)
+    print("normalized subset")
+    features = ["area", "bedrooms", "bathrooms", "stories", "parking"]
+    theta = multipleDescent(nxtrain[features], nytrain, nxtrain[features].shape[1], learningRate=0.1, paramPenalty=False)
+
+    plotFeatures(features, theta)
+
+    # train with standardization (no param penalty)
+    print("standardized (all columns)")
+    features = ["sq.ft", "beds", "baths", "story", "road",
+                "guest", "base", "heat", "aircon", "park", "pref", "furn"]
+    theta = multipleDescent(sxtrain, sytrain, sxtrain.shape[1], learningRate=0.1, paramPenalty=False)
+
+    plotFeatures(features, theta)
+    
+    # train with parameter penalty (normalization) 
+        
+    print("Training with a subset of variables (with parameter penalty)")
+    features = ["area", "bedrooms", "bathrooms", "stories", "parking"]
+    theta = multipleDescent(nxtrain[features], nytrain, nxtrain[features].shape[1], learningRate=0.1, paramPenalty=True, lambda_reg=0.05)
+
+    plotFeatures(features, theta)
+
+    # train with parameter penalty (standardization)
+
+    print("Training with all variables (with parameter penalty)")
+    theta = multipleDescent(
+        sxtrain, sytrain, sxtrain.shape[1], learningRate=0.01, paramPenalty=True, lambda_reg=0.01, tolerance=0.04)
+    features = ["sq.ft", "beds", "baths", "story", "road",
+                "guest", "base", "heat", "aircon", "park", "pref", "furn"]
+
+    plotFeatures(features, theta)
 
 if __name__ == "__main__":
     main()
