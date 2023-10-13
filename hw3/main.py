@@ -428,14 +428,15 @@ def problem5():
 
 
 def main():
-    # problem1()
+    problem1()
 
     problem2()
 
-    # problem3()
+    problem3()
 
     problem4(k=10, logistic=True)
 
+    problem4(k=10, logistic=False)
 
 if __name__ == "__main__":
     main()
