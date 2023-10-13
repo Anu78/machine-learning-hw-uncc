@@ -37,7 +37,7 @@ def logisticRegression(X, y, learningRate=0.1, iterations=1000, tolerance=1e-4, 
 
     theta = np.zeros(num_features)
     bias = 0
-    previous_cost = float("inf")  # Initialize with a large value
+    previous_cost = float("inf")
     costs = []
 
     for i in range(iterations):
@@ -89,7 +89,6 @@ def plotFeatures(featureNames, theta):
 
 
 def accuracy_(predicted, y):
-    # Calculate accuracy
     correct_predictions = np.sum(predicted == y)
     total_predictions = len(y)
     accuracy = correct_predictions / total_predictions
@@ -117,17 +116,20 @@ def f1_(precision, recall):
 def confusionMatrix(predicted, y):
     tp = np.sum(predicted == y)
     tn = np.sum(predicted != y)
-    fp = sum(1 for true_label, predicted_label in zip(y, predicted) if predicted_label == 1 and true_label == 0)
-    fn = sum(1 for true_label, predicted_label in zip(y, predicted) if predicted_label == 0 and true_label == 1)
+    fp = sum(1 for true_label, predicted_label in zip(y, predicted)
+             if predicted_label == 1 and true_label == 0)
+    fn = sum(1 for true_label, predicted_label in zip(y, predicted)
+             if predicted_label == 0 and true_label == 1)
 
     return [[tp, tn], [fp, fn]]
+
 
 class NaiveBayesClassifier:
     def __init__(self):
         self.mean = {}
         self.var = {}
         self.priors = {}
-    
+
     def fit(self, X, y):
         unique_classes = np.unique(y)
         for label in unique_classes:
@@ -135,32 +137,35 @@ class NaiveBayesClassifier:
             self.mean[label] = X_class.mean(axis=0)
             self.var[label] = X_class.var(axis=0)
             self.priors[label] = float(len(X_class) / len(X))
-    
+
     def predict(self, X):
         probs = np.zeros((len(X), len(self.priors)))
         for label, prior in self.priors.items():
             probs[:, label] = np.log(prior) + \
-                              -0.5 * np.sum(np.log(2 * np.pi * self.var[label])) - \
-                              0.5 * np.sum(((X - self.mean[label]) ** 2) / (self.var[label]), axis=1)
+                -0.5 * np.sum(np.log(2 * np.pi * self.var[label])) - \
+                0.5 * np.sum(((X - self.mean[label])
+                             ** 2) / (self.var[label]), axis=1)
         return np.argmax(probs, axis=1)
+
 
 def pca(data, k):
 
     covariance_matrix = np.cov(data, rowvar=False)
-    
+
     eigenvalues, eigenvectors = np.linalg.eigh(covariance_matrix)
-    
+
     idx = eigenvalues.argsort()[::-1]
     eigenvectors = eigenvectors[:, idx]
     eigenvalues = eigenvalues[idx]
-    
+
     k = min(data.shape[1], k)
-    
+
     projection_matrix = eigenvectors[:, :k]
-    
+
     data_pca = np.dot(data, projection_matrix)
-    
+
     return pd.DataFrame(data_pca)
+
 
 def problem1():
     scaler = "std"
@@ -180,22 +185,18 @@ def problem1():
     df_valid, outcome_valid = readCSV(
         "./datasets/diabetes-valid.csv", scaler=scaler, dtypes=dtypes, output="Outcome")
 
-    # problem 1 - diabetes classification
     theta, bias = logisticRegression(
         df, outcome, learningRate=0.01, strength=0.1, reg="")
 
-    # Make predictions on the validation data
     predicted = predict(df_valid, theta, bias)
     predicted = np.round(predicted)
 
-    # plot confusion matrix
     confMatrix = confusionMatrix(predicted, outcome_valid)
 
     print("\nConfusion Matrix:")
     for row in confMatrix:
         print(row)
 
-    # accuracy metrics
     accuracy = accuracy_(predicted, outcome_valid)
     precision = precision_(confMatrix)
     recall = recall_(confMatrix)
@@ -326,7 +327,6 @@ def problem3():
     clf = NaiveBayesClassifier()
     clf.fit(df, outcome)
 
-    # Predict on the validation set
     predictions = clf.predict(df_valid)
 
     confMatrix = confusionMatrix(predictions, outcome_valid)
@@ -346,7 +346,7 @@ def problem3():
     print(f"F1: {f1}")
 
 
-def problem4(k = 5, logistic = True):
+def problem4(k=5, logistic=True):
     scaler = "nrml"
     dtypes = {
         'id': int,
@@ -390,14 +390,14 @@ def problem4(k = 5, logistic = True):
                           dtypes=dtypes, output="diagnosis", replace=replace, remove=["id"])
     df_valid, outcome_valid = readCSV("./datasets/cancer-valid.csv", scaler=scaler,
                                       dtypes=dtypes, output="diagnosis", replace=replace, remove=["id"])
-    
+
     df = pca(df, k)
     df_valid = pca(df_valid, k)
-    
+
     if logistic:
         theta, bias = logisticRegression(
             df, outcome, learningRate=0.01, strength=0.1, reg="")
-        
+
         predicted = predict(df_valid, theta, bias)
         predicted = np.round(predicted)
     else:
@@ -405,14 +405,13 @@ def problem4(k = 5, logistic = True):
         clf.fit(df, outcome)
 
         predicted = clf.predict(df_valid)
-    
+
     confMatrix = confusionMatrix(predicted, outcome_valid)
 
     print("\nConfusion Matrix:")
     for row in confMatrix:
         print(row)
 
-    # accuracy metrics
     accuracy = accuracy_(predicted, outcome_valid)
     precision = precision_(confMatrix)
     recall = recall_(confMatrix)
@@ -422,6 +421,7 @@ def problem4(k = 5, logistic = True):
     print(f"Precision: {precision*100}%")
     print(f"Recall: {recall*100}%")
     print(f"F1: {f1}")
+
 
 def problem5():
     pass
@@ -435,5 +435,7 @@ def main():
     # problem3()
 
     problem4(k=10, logistic=True)
+
+
 if __name__ == "__main__":
     main()
