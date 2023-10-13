@@ -4,12 +4,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def readCSV(filepath, dtypes, output, scaler="nrml", replace=None, remove=[]):
+def readCSV(filepath, dtypes, output, scaler="", replace=None, remove=[]):
     df = pd.read_csv(filepath, dtype=dtypes)
     outcome = df.pop(output)
     if scaler == "nrml":
         df = df.apply(lambda x: (x - x.min()) / (x.max() - x.min()))
-    else:
+    elif scaler == "std":
         means = df.mean()
         stds = df.std()
         df = (df - means) / stds
@@ -116,7 +116,7 @@ def f1_(precision, recall):
 
 def confusionMatrix(predicted, y):
     tp = np.sum(predicted == y)
-    tn = sum(predicted != y)
+    tn = np.sum(predicted != y)
     fp = sum(1 for true_label, predicted_label in zip(y, predicted) if predicted_label == 1 and true_label == 0)
     fn = sum(1 for true_label, predicted_label in zip(y, predicted) if predicted_label == 0 and true_label == 1)
 
@@ -143,6 +143,24 @@ class NaiveBayesClassifier:
                               -0.5 * np.sum(np.log(2 * np.pi * self.var[label])) - \
                               0.5 * np.sum(((X - self.mean[label]) ** 2) / (self.var[label]), axis=1)
         return np.argmax(probs, axis=1)
+
+def pca(data, k):
+
+    covariance_matrix = np.cov(data, rowvar=False)
+    
+    eigenvalues, eigenvectors = np.linalg.eigh(covariance_matrix)
+    
+    idx = eigenvalues.argsort()[::-1]
+    eigenvectors = eigenvectors[:, idx]
+    eigenvalues = eigenvalues[idx]
+    
+    k = min(data.shape[1], k)
+    
+    projection_matrix = eigenvectors[:, :k]
+    
+    data_pca = np.dot(data, projection_matrix)
+    
+    return pd.DataFrame(data_pca)
 
 def problem1():
     scaler = "std"
@@ -328,9 +346,82 @@ def problem3():
     print(f"F1: {f1}")
 
 
-def problem4():
-    pass
+def problem4(k = 5, logistic = True):
+    scaler = "nrml"
+    dtypes = {
+        'id': int,
+        'diagnosis': str,
+        'radius_mean': float,
+        'texture_mean': float,
+        'perimeter_mean': float,
+        'area_mean': float,
+        'smoothness_mean': float,
+        'compactness_mean': float,
+        'concavity_mean': float,
+        'concave points_mean': float,
+        'symmetry_mean': float,
+        'fractal_dimension_mean': float,
+        'radius_se': float,
+        'texture_se': float,
+        'perimeter_se': float,
+        'area_se': float,
+        'smoothness_se': float,
+        'compactness_se': float,
+        'concavity_se': float,
+        'concave points_se': float,
+        'symmetry_se': float,
+        'fractal_dimension_se': float,
+        'radius_worst': float,
+        'texture_worst': float,
+        'perimeter_worst': float,
+        'area_worst': float,
+        'smoothness_worst': float,
+        'compactness_worst': float,
+        'concavity_worst': float,
+        'concave points_worst': float,
+        'symmetry_worst': float,
+        'fractal_dimension_worst': float
+    }
+    replace = {
+        "B": 1,
+        "M": 0
+    }
+    df, outcome = readCSV("./datasets/cancer.csv", scaler=scaler,
+                          dtypes=dtypes, output="diagnosis", replace=replace, remove=["id"])
+    df_valid, outcome_valid = readCSV("./datasets/cancer-valid.csv", scaler=scaler,
+                                      dtypes=dtypes, output="diagnosis", replace=replace, remove=["id"])
+    
+    df = pca(df, k)
+    df_valid = pca(df_valid, k)
+    
+    if logistic:
+        theta, bias = logisticRegression(
+            df, outcome, learningRate=0.01, strength=0.1, reg="")
+        
+        predicted = predict(df_valid, theta, bias)
+        predicted = np.round(predicted)
+    else:
+        clf = NaiveBayesClassifier()
+        clf.fit(df, outcome)
 
+        predicted = clf.predict(df_valid)
+    
+    confMatrix = confusionMatrix(predicted, outcome_valid)
+
+    print("\nConfusion Matrix:")
+    for row in confMatrix:
+        print(row)
+
+    # accuracy metrics
+    accuracy = accuracy_(predicted, outcome_valid)
+    precision = precision_(confMatrix)
+    recall = recall_(confMatrix)
+    f1 = f1_(precision, recall)
+
+    print(f"\nAccuracy: {round(accuracy*100,4)}%")
+    print(f"Precision: {precision*100}%")
+    print(f"Recall: {recall*100}%")
+    print(f"F1: {f1}")
 
 def problem5():
     pass
@@ -339,10 +430,10 @@ def problem5():
 def main():
     # problem1()
 
-    # problem2()
+    problem2()
 
-    problem3()
+    # problem3()
 
-
+    problem4(k=10, logistic=True)
 if __name__ == "__main__":
     main()
