@@ -114,3 +114,4 @@ if __name__ == "__main__":
     print(metrics.matrix)
 
     #! SVR training on housing dataset
+    df, outcome = readCSV("./data/Housing.csv")
