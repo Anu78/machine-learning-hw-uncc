@@ -15,7 +15,7 @@ class SVM():
 
         for _ in range(self.iter):
             for index, xI in enumerate(X):
-                condition = y[index] * (np.dot(xI, self.w) - self.b) >= 1
+                condition = y[index] * (np.dot(xI, self.w) - self.b) >= 1 # kernel function is implemented on this line
 
                 if condition:
                     self.w -= self.lr * (2 * self.lp * self.w)
@@ -26,3 +26,7 @@ class SVM():
         approx = np.dot(X, self.w) - self.b
 
         return np.sign(approx)
+
+class SVR():
+    def __init__(self):
+        pass

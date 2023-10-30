@@ -6,9 +6,9 @@ class Metrics():
         self.y = y
         self.matrix = self.confusionMatrix()
         self.acc = self.accuracy()
-        self.precision = self.precision()
-        self.recall = self.recall()
-        self.f1 = self.f1()
+        self.precision = self.prec()
+        self.recall = self.rec()
+        self.f1 = self.f1_score()
 
     
     def confusionMatrix(self):
@@ -27,20 +27,20 @@ class Metrics():
         accuracy = correct_predictions / total_predictions
         return accuracy
 
-    def precision(self):
+    def prec(self):
         tp = self.matrix[0][0]
         fp = self.matrix[1][0]
 
         return round(tp / (tp + fp), 4)
 
 
-    def recall(self):
+    def rec(self):
         tp = self.matrix[0][0]
         fn = self.matrix[1][1]
 
         return round(tp / (tp + fn), 4)
 
 
-    def f1(self):
+    def f1_score(self):
         return round((2 * self.precision * self.recall) / (self.precision + self.recall), 4)
 

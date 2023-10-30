@@ -48,7 +48,7 @@ def pca(data, k):
 
 
 if __name__ == "__main__":
-    # read data from csv
+    #! SVM training on cancer dataset
     scaler = "nrml"
     dtypes = {
         'id': int,
@@ -94,19 +94,23 @@ if __name__ == "__main__":
                                       dtypes=dtypes, output="diagnosis", replace=replace, remove=["id"])
 
     # implement pca feature extraction
-    k = 5 # amount of features to keep
+    k = 15 # amount of features to keep
     df_pca = pca(df, k)
+    df_valid_PCA = pca(df_valid, k)
 
     # train!
     model = SVM()
 
-    model.fit(df.values, outcome.values)
+    model.fit(df_pca.values, outcome.values)
 
     # validate accuracy
     model_out = []
-    for x,y in zip(df_valid.values, outcome_valid.values):
+    for x in df_valid_PCA.values:
         model_out.append(model.predict(x))
     
     # get metrics
     metrics = Metrics(model_out, outcome_valid)
-    print(metrics.acc)
+    print(f"accuracy: {metrics.acc}, precision: {metrics.precision}, recall: {metrics.recall}, f1: {metrics.f1}")
+    print(metrics.matrix)
+
+    #! SVR training on housing dataset
