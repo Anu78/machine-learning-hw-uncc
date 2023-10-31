@@ -1,4 +1,5 @@
 import numpy as np
+from cvxopt import matrix, solvers
 
 class SVM():
     def __init__(self, learningRate=0.01, iterations=1000, lambdaParam=0.01):
@@ -26,7 +27,3 @@ class SVM():
         approx = np.dot(X, self.w) - self.b
 
         return np.sign(approx)
-
-class SVR():
-    def __init__(self):
-        pass

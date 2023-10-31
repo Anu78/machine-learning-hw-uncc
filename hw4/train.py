@@ -2,7 +2,7 @@
 
 import numpy as np
 import pandas as pd
-from models import SVM
+from models import SVM, SVR
 from metrics import Metrics
 
 def readCSV(filepath, dtypes, output, scaler="", replace=None, remove=[]):
@@ -101,12 +101,10 @@ if __name__ == "__main__":
     # train!
     model = SVM()
 
-    model.fit(df_pca.values, outcome.values)
+    model.fit(df.values, outcome.values)
 
     # validate accuracy
-    model_out = []
-    for x in df_valid_PCA.values:
-        model_out.append(model.predict(x))
+    model_out = model.predict(df_valid.values)
     
     # get metrics
     metrics = Metrics(model_out, outcome_valid)
@@ -114,4 +112,54 @@ if __name__ == "__main__":
     print(metrics.matrix)
 
     #! SVR training on housing dataset
-    df, outcome = readCSV("./data/Housing.csv")
+    df = pd.read_csv("./data/Housing.csv")
+    outcome = df.pop("price")
+    df_valid = pd.read_csv("./data/Housing-valid.csv")
+    outcome_valid = df_valid.pop("price")
+
+    replacement_dict = {'yes': 1, 'no': 0}
+
+    # Columns to replace values in
+    columns_to_replace = ['mainroad', 'guestroom', 'hotwaterheating', 'airconditioning', 'prefarea', 'basement']
+
+    # Use the replace method to perform the replacements
+    df[columns_to_replace] = df[columns_to_replace].replace(replacement_dict)
+    df_valid[columns_to_replace] = df_valid[columns_to_replace].replace(replacement_dict)
+    
+    replacement_dict = {"furnished": 1, "semi-furnished": 0.5, "unfurnished": 0}
+    df["furnishingstatus"] = df["furnishingstatus"].replace(replacement_dict)
+    df_valid["furnishingstatus"] = df_valid["furnishingstatus"].replace(replacement_dict)
+
+    # normalize data now 
+    def min_max_scaling(col):
+        if col.dtype in [int, float]:
+            minval = col.min()
+            maxval = col.max()
+
+            scaledcol = (col - minval) / (maxval - minval)
+
+            return scaledcol
+        else:
+            return col
+        
+    # normalize inputs and outputs
+    df = df.apply(min_max_scaling)
+    df_valid = df_valid.apply(min_max_scaling)
+    outcome = min_max_scaling(outcome)
+    outcome_valid = min_max_scaling(outcome_valid)
+
+    # apply PCA
+    k = 5
+    df_pca = pca(df, k)
+
+    # train!
+    model = SVR()
+    model.fit(df.values, outcome.values)
+    print(model.alpha, model.b)
+
+    # validate data 
+    model_out = model.predict(df_valid.values)
+    # accuracy
+    metrics = Metrics(model_out, outcome_valid.values)
+    print(f"accuracy: {metrics.acc}, precision: {metrics.precision}, recall: {metrics.recall}, f1: {metrics.f1}")
+    print(metrics.matrix)
