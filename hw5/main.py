@@ -9,17 +9,19 @@ if torch.backends.mps.is_available():
 else:
     print ("MPS device not found.")
 
-class LinearModel(nn.Module):
+class PolynomialModel(nn.Module):
     def __init__(self):
-        super(LinearModel, self).__init__()
-        self.linear = nn.Linear(1,1)
+        super(PolynomialModel, self).__init__()
+        self.w2 = nn.Parameter(torch.randn(1))
+        self.w1 = nn.Parameter(torch.randn(1))
+        self.b = nn.Parameter(torch.randn(1))
 
     def forward(self, x):
-        return self.linear(x)
+        return self.w2 * x**2 + self.w1*x + self.b
 
 
 def train(model, epochs, optimizer, loss_function, t_u, t_c):
-    for epoch in range(epochs):
+    for epoch in range(epochs+1):
         # Forward pass: Compute predicted y by passing x to the model
         y_pred = model(t_u)
 
@@ -45,7 +47,7 @@ def main():
     t_c = t_c.view(-1,1)
     t_u = t_u.view(-1,1)
     
-    model = LinearModel()
+    model = PolynomialModel()
     model.to(mps_device)
     loss_fn = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-1)
