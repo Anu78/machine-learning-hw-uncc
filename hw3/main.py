@@ -32,7 +32,9 @@ def predict(X, theta, bias):
     return sigmoid(linear_model)
 
 
-def logisticRegression(X, y, learningRate=0.1, iterations=1000, tolerance=1e-4, strength=0.1, reg=""):
+def logisticRegression(
+    X, y, learningRate=0.1, iterations=1000, tolerance=1e-4, strength=0.1, reg=""
+):
     num_samples, num_features = X.shape
 
     theta = np.zeros(num_features)
@@ -43,10 +45,13 @@ def logisticRegression(X, y, learningRate=0.1, iterations=1000, tolerance=1e-4, 
     for i in range(iterations):
         model = np.dot(X, theta) + bias
         predictions = sigmoid(model)
-        predictions = np.clip(predictions, 1e-15, 1-1e-15)
+        predictions = np.clip(predictions, 1e-15, 1 - 1e-15)
 
-        cost = -1/num_samples * \
-            np.sum(y * np.log(predictions) + (1 - y) * np.log(1 - predictions))
+        cost = (
+            -1
+            / num_samples
+            * np.sum(y * np.log(predictions) + (1 - y) * np.log(1 - predictions))
+        )
 
         if reg == "l1":
             cost += strength * np.sum(np.abs(theta))
@@ -71,7 +76,7 @@ def logisticRegression(X, y, learningRate=0.1, iterations=1000, tolerance=1e-4, 
 
         previous_cost = cost
 
-    plt.plot(np.arange(i+1), costs)
+    plt.plot(np.arange(i + 1), costs)
     plt.xlabel("Epoch")
     plt.ylabel("Binary Cross Entropy Loss")
     plt.title(f"Loss over {i} epochs")
@@ -116,10 +121,16 @@ def f1_(precision, recall):
 def confusionMatrix(predicted, y):
     tp = np.sum(predicted == y)
     tn = np.sum(predicted != y)
-    fp = sum(1 for true_label, predicted_label in zip(y, predicted)
-             if predicted_label == 1 and true_label == 0)
-    fn = sum(1 for true_label, predicted_label in zip(y, predicted)
-             if predicted_label == 0 and true_label == 1)
+    fp = sum(
+        1
+        for true_label, predicted_label in zip(y, predicted)
+        if predicted_label == 1 and true_label == 0
+    )
+    fn = sum(
+        1
+        for true_label, predicted_label in zip(y, predicted)
+        if predicted_label == 0 and true_label == 1
+    )
 
     return [[tp, tn], [fp, fn]]
 
@@ -141,15 +152,16 @@ class NaiveBayesClassifier:
     def predict(self, X):
         probs = np.zeros((len(X), len(self.priors)))
         for label, prior in self.priors.items():
-            probs[:, label] = np.log(prior) + \
-                -0.5 * np.sum(np.log(2 * np.pi * self.var[label])) - \
-                0.5 * np.sum(((X - self.mean[label])
-                             ** 2) / (self.var[label]), axis=1)
+            probs[:, label] = (
+                np.log(prior)
+                + -0.5 * np.sum(np.log(2 * np.pi * self.var[label]))
+                - 0.5
+                * np.sum(((X - self.mean[label]) ** 2) / (self.var[label]), axis=1)
+            )
         return np.argmax(probs, axis=1)
 
 
 def pca(data, k):
-
     covariance_matrix = np.cov(data, rowvar=False)
 
     eigenvalues, eigenvectors = np.linalg.eigh(covariance_matrix)
@@ -170,23 +182,26 @@ def pca(data, k):
 def problem1():
     scaler = "std"
     dtypes = {
-        'Pregnancies': int,
-        'Glucose': int,
-        'BloodPressure': int,
-        'SkinThickness': int,
-        'Insulin': int,
-        'BMI': float,
-        'DiabetesPedigreeFunction': float,
-        'Age': int,
-        'Outcome': int
+        "Pregnancies": int,
+        "Glucose": int,
+        "BloodPressure": int,
+        "SkinThickness": int,
+        "Insulin": int,
+        "BMI": float,
+        "DiabetesPedigreeFunction": float,
+        "Age": int,
+        "Outcome": int,
     }
-    df, outcome = readCSV("./datasets/diabetes.csv",
-                          scaler=scaler, dtypes=dtypes, output="Outcome")
+    df, outcome = readCSV(
+        "./datasets/diabetes.csv", scaler=scaler, dtypes=dtypes, output="Outcome"
+    )
     df_valid, outcome_valid = readCSV(
-        "./datasets/diabetes-valid.csv", scaler=scaler, dtypes=dtypes, output="Outcome")
+        "./datasets/diabetes-valid.csv", scaler=scaler, dtypes=dtypes, output="Outcome"
+    )
 
     theta, bias = logisticRegression(
-        df, outcome, learningRate=0.01, strength=0.1, reg="")
+        df, outcome, learningRate=0.01, strength=0.1, reg=""
+    )
 
     predicted = predict(df_valid, theta, bias)
     predicted = np.round(predicted)
@@ -207,57 +222,68 @@ def problem1():
     print(f"Recall: {recall*100}%")
     print(f"F1: {f1}")
 
-    plotFeatures(["preg", "glucose", "bp", "skinthick",
-                 "insulin", "bmi", "dpf", "age"], theta)
+    plotFeatures(
+        ["preg", "glucose", "bp", "skinthick", "insulin", "bmi", "dpf", "age"], theta
+    )
 
 
 def problem2():
     scaler = "nrml"
     dtypes = {
-        'id': int,
-        'diagnosis': str,
-        'radius_mean': float,
-        'texture_mean': float,
-        'perimeter_mean': float,
-        'area_mean': float,
-        'smoothness_mean': float,
-        'compactness_mean': float,
-        'concavity_mean': float,
-        'concave points_mean': float,
-        'symmetry_mean': float,
-        'fractal_dimension_mean': float,
-        'radius_se': float,
-        'texture_se': float,
-        'perimeter_se': float,
-        'area_se': float,
-        'smoothness_se': float,
-        'compactness_se': float,
-        'concavity_se': float,
-        'concave points_se': float,
-        'symmetry_se': float,
-        'fractal_dimension_se': float,
-        'radius_worst': float,
-        'texture_worst': float,
-        'perimeter_worst': float,
-        'area_worst': float,
-        'smoothness_worst': float,
-        'compactness_worst': float,
-        'concavity_worst': float,
-        'concave points_worst': float,
-        'symmetry_worst': float,
-        'fractal_dimension_worst': float
+        "id": int,
+        "diagnosis": str,
+        "radius_mean": float,
+        "texture_mean": float,
+        "perimeter_mean": float,
+        "area_mean": float,
+        "smoothness_mean": float,
+        "compactness_mean": float,
+        "concavity_mean": float,
+        "concave points_mean": float,
+        "symmetry_mean": float,
+        "fractal_dimension_mean": float,
+        "radius_se": float,
+        "texture_se": float,
+        "perimeter_se": float,
+        "area_se": float,
+        "smoothness_se": float,
+        "compactness_se": float,
+        "concavity_se": float,
+        "concave points_se": float,
+        "symmetry_se": float,
+        "fractal_dimension_se": float,
+        "radius_worst": float,
+        "texture_worst": float,
+        "perimeter_worst": float,
+        "area_worst": float,
+        "smoothness_worst": float,
+        "compactness_worst": float,
+        "concavity_worst": float,
+        "concave points_worst": float,
+        "symmetry_worst": float,
+        "fractal_dimension_worst": float,
     }
-    replace = {
-        "B": 1,
-        "M": 0
-    }
-    df, outcome = readCSV("./datasets/cancer.csv", scaler=scaler,
-                          dtypes=dtypes, output="diagnosis", replace=replace, remove=["id"])
-    df_valid, outcome_valid = readCSV("./datasets/cancer-valid.csv", scaler=scaler,
-                                      dtypes=dtypes, output="diagnosis", replace=replace, remove=["id"])
+    replace = {"B": 1, "M": 0}
+    df, outcome = readCSV(
+        "./datasets/cancer.csv",
+        scaler=scaler,
+        dtypes=dtypes,
+        output="diagnosis",
+        replace=replace,
+        remove=["id"],
+    )
+    df_valid, outcome_valid = readCSV(
+        "./datasets/cancer-valid.csv",
+        scaler=scaler,
+        dtypes=dtypes,
+        output="diagnosis",
+        replace=replace,
+        remove=["id"],
+    )
 
     theta, bias = logisticRegression(
-        df, outcome, learningRate=0.1, strength=0.01, reg="l1")
+        df, outcome, learningRate=0.1, strength=0.01, reg="l1"
+    )
 
     predicted = predict(df_valid, theta, bias)
     predicted = np.round(predicted)
@@ -282,47 +308,56 @@ def problem2():
 def problem3():
     scaler = "nrml"
     dtypes = {
-        'id': int,
-        'diagnosis': str,
-        'radius_mean': float,
-        'texture_mean': float,
-        'perimeter_mean': float,
-        'area_mean': float,
-        'smoothness_mean': float,
-        'compactness_mean': float,
-        'concavity_mean': float,
-        'concave points_mean': float,
-        'symmetry_mean': float,
-        'fractal_dimension_mean': float,
-        'radius_se': float,
-        'texture_se': float,
-        'perimeter_se': float,
-        'area_se': float,
-        'smoothness_se': float,
-        'compactness_se': float,
-        'concavity_se': float,
-        'concave points_se': float,
-        'symmetry_se': float,
-        'fractal_dimension_se': float,
-        'radius_worst': float,
-        'texture_worst': float,
-        'perimeter_worst': float,
-        'area_worst': float,
-        'smoothness_worst': float,
-        'compactness_worst': float,
-        'concavity_worst': float,
-        'concave points_worst': float,
-        'symmetry_worst': float,
-        'fractal_dimension_worst': float
+        "id": int,
+        "diagnosis": str,
+        "radius_mean": float,
+        "texture_mean": float,
+        "perimeter_mean": float,
+        "area_mean": float,
+        "smoothness_mean": float,
+        "compactness_mean": float,
+        "concavity_mean": float,
+        "concave points_mean": float,
+        "symmetry_mean": float,
+        "fractal_dimension_mean": float,
+        "radius_se": float,
+        "texture_se": float,
+        "perimeter_se": float,
+        "area_se": float,
+        "smoothness_se": float,
+        "compactness_se": float,
+        "concavity_se": float,
+        "concave points_se": float,
+        "symmetry_se": float,
+        "fractal_dimension_se": float,
+        "radius_worst": float,
+        "texture_worst": float,
+        "perimeter_worst": float,
+        "area_worst": float,
+        "smoothness_worst": float,
+        "compactness_worst": float,
+        "concavity_worst": float,
+        "concave points_worst": float,
+        "symmetry_worst": float,
+        "fractal_dimension_worst": float,
     }
-    replace = {
-        "B": 1,
-        "M": 0
-    }
-    df, outcome = readCSV("./datasets/cancer.csv", scaler=scaler,
-                          dtypes=dtypes, output="diagnosis", replace=replace, remove=["id"])
-    df_valid, outcome_valid = readCSV("./datasets/cancer-valid.csv", scaler=scaler,
-                                      dtypes=dtypes, output="diagnosis", replace=replace, remove=["id"])
+    replace = {"B": 1, "M": 0}
+    df, outcome = readCSV(
+        "./datasets/cancer.csv",
+        scaler=scaler,
+        dtypes=dtypes,
+        output="diagnosis",
+        replace=replace,
+        remove=["id"],
+    )
+    df_valid, outcome_valid = readCSV(
+        "./datasets/cancer-valid.csv",
+        scaler=scaler,
+        dtypes=dtypes,
+        output="diagnosis",
+        replace=replace,
+        remove=["id"],
+    )
 
     clf = NaiveBayesClassifier()
     clf.fit(df, outcome)
@@ -349,54 +384,64 @@ def problem3():
 def problem4(k=5, logistic=True):
     scaler = "nrml"
     dtypes = {
-        'id': int,
-        'diagnosis': str,
-        'radius_mean': float,
-        'texture_mean': float,
-        'perimeter_mean': float,
-        'area_mean': float,
-        'smoothness_mean': float,
-        'compactness_mean': float,
-        'concavity_mean': float,
-        'concave points_mean': float,
-        'symmetry_mean': float,
-        'fractal_dimension_mean': float,
-        'radius_se': float,
-        'texture_se': float,
-        'perimeter_se': float,
-        'area_se': float,
-        'smoothness_se': float,
-        'compactness_se': float,
-        'concavity_se': float,
-        'concave points_se': float,
-        'symmetry_se': float,
-        'fractal_dimension_se': float,
-        'radius_worst': float,
-        'texture_worst': float,
-        'perimeter_worst': float,
-        'area_worst': float,
-        'smoothness_worst': float,
-        'compactness_worst': float,
-        'concavity_worst': float,
-        'concave points_worst': float,
-        'symmetry_worst': float,
-        'fractal_dimension_worst': float
+        "id": int,
+        "diagnosis": str,
+        "radius_mean": float,
+        "texture_mean": float,
+        "perimeter_mean": float,
+        "area_mean": float,
+        "smoothness_mean": float,
+        "compactness_mean": float,
+        "concavity_mean": float,
+        "concave points_mean": float,
+        "symmetry_mean": float,
+        "fractal_dimension_mean": float,
+        "radius_se": float,
+        "texture_se": float,
+        "perimeter_se": float,
+        "area_se": float,
+        "smoothness_se": float,
+        "compactness_se": float,
+        "concavity_se": float,
+        "concave points_se": float,
+        "symmetry_se": float,
+        "fractal_dimension_se": float,
+        "radius_worst": float,
+        "texture_worst": float,
+        "perimeter_worst": float,
+        "area_worst": float,
+        "smoothness_worst": float,
+        "compactness_worst": float,
+        "concavity_worst": float,
+        "concave points_worst": float,
+        "symmetry_worst": float,
+        "fractal_dimension_worst": float,
     }
-    replace = {
-        "B": 1,
-        "M": 0
-    }
-    df, outcome = readCSV("./datasets/cancer.csv", scaler=scaler,
-                          dtypes=dtypes, output="diagnosis", replace=replace, remove=["id"])
-    df_valid, outcome_valid = readCSV("./datasets/cancer-valid.csv", scaler=scaler,
-                                      dtypes=dtypes, output="diagnosis", replace=replace, remove=["id"])
+    replace = {"B": 1, "M": 0}
+    df, outcome = readCSV(
+        "./datasets/cancer.csv",
+        scaler=scaler,
+        dtypes=dtypes,
+        output="diagnosis",
+        replace=replace,
+        remove=["id"],
+    )
+    df_valid, outcome_valid = readCSV(
+        "./datasets/cancer-valid.csv",
+        scaler=scaler,
+        dtypes=dtypes,
+        output="diagnosis",
+        replace=replace,
+        remove=["id"],
+    )
 
     df = pca(df, k)
     df_valid = pca(df_valid, k)
 
     if logistic:
         theta, bias = logisticRegression(
-            df, outcome, learningRate=0.01, strength=0.1, reg="")
+            df, outcome, learningRate=0.01, strength=0.1, reg=""
+        )
 
         predicted = predict(df_valid, theta, bias)
         predicted = np.round(predicted)
@@ -437,6 +482,7 @@ def main():
     problem4(k=10, logistic=True)
 
     problem4(k=10, logistic=False)
+
 
 if __name__ == "__main__":
     main()
