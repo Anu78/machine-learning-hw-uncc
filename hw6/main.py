@@ -1,9 +1,11 @@
 import torch
 import torch.nn as nn
-import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
+import torchvision.transforms as transforms
+import torchvision
+import time
 
 """
 check if device supports mps
@@ -11,7 +13,7 @@ check if device supports mps
 global mps_device
 # check for apple silicon support
 if torch.backends.mps.is_available():
-    mps_device = torch.device("cpu")  # temporarily disabled mps
+    mps_device = torch.device("mps")  # temporarily disabled mps
 else:
     print("MPS device not found.")
 
@@ -113,23 +115,68 @@ def ntrain(model, epochs, optimizer, loss_function, dataloader, valid_data):
 
     return model
 
+class CifarModel1(nn.Module):
+    def __init__(self):
+        super(CifarModel1, self).__init__()
+        self.flatten = nn.Flatten()
+        self.fc1 = nn.Linear(32 * 32 * 3, 512)
+        self.relu = nn.ReLU()
+        self.fc2 = nn.Linear(512, 10)
+    def forward(self, x):
+        x = self.flatten(x)
+        x = self.fc1(x)
+        x = self.relu(x)
+        x = self.fc2(x)
+        return x
+    
+class CifarModel2(nn.Module):
+    def __init__(self):
+        super(CifarModel2, self).__init__()
+        self.flatten = nn.Flatten()
+        self.fc1 = nn.Linear(32 * 32 * 3, 512)
+        self.fc2 = nn.Linear(512, 256)
+        self.fc3 = nn.Linear(256, 128)
+        self.fc4 = nn.Linear(128, 64)
+        self.fc5 = nn.Linear(64, 10)
+    
+    def forward(self, x):
+        x = self.flatten(x)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        x = F.relu(self.fc4(x))
+        x = self.fc5(x)
+        return x
 
-"""
-grab the unpickled dataset
-"""
-
-
-def unpickle(file):
-    import pickle
-
-    with open(file, "rb") as fo:
-        dict = pickle.load(fo, encoding="bytes")
-    return dict
-
+class CNN(nn.Module):
+    def __init__(self):
+        super(CNN, self).__init__()
+        self.conv1 = nn.Conv2d(3, 32, 3, padding=1)
+        self.conv2 = nn.Conv2d(32, 64, 3, padding=1)
+        self.conv3 = nn.Conv2d(64, 128, 3, padding=1)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.dropout = nn.Dropout(0.5)
+        self.fc1 = nn.Linear(128 * 4 * 4, 512)
+        self.fc2 = nn.Linear(512, 256)
+        self.fc3 = nn.Linear(256, 10)
+    
+    def forward(self, x):
+        x = self.pool(F.relu(self.conv1(x)))
+        x = self.pool(F.relu(self.conv2(x)))
+        x = self.pool(F.relu(self.conv3(x)))
+        x = x.view(-1, 128 * 4 * 4)  # Flatten
+        x = self.dropout(x)
+        x = F.relu(self.fc1(x))
+        x = self.dropout(x)
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
 
 def part1(model_complexity: bool) -> None:
     """
-    Create a fully connected neural network to predict price based on all parameters in the housing dataset.
+    Create a fully connected neural network to predict price based on all parameters in the housing dataset. 
+    
+    model_complexity: false chooses the less complex model. 
     """
     model = HousingModel2() if model_complexity else HousingModel1()
 
@@ -146,9 +193,59 @@ def part1(model_complexity: bool) -> None:
     trained_model = ntrain(model, 1000, optimizer, loss_fn, dataLoader, valid_dataset)
 
 
-def part2():
-    pass
 
+def part2(model_complexity: bool):
+    # load cifar10 dataset
+    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+    train_dataset = torchvision.datasets.CIFAR10(root='./data', train=True, transform=transform, download=True)
+    train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=100, shuffle=True)
+
+    test_dataset = torchvision.datasets.CIFAR10(root='./data', train=False, transform=transform)
+    test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=100, shuffle=False)
+
+    # define & move model 
+    # model = CifarModel2() if model_complexity else CifarModel1()
+    model = CNN()
+    model.to(mps_device)
+
+    # setup optimizer and loss function
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0005) 
+
+    # custom training loop
+    start_time = time.time()
+    for epoch in range(20):
+        for (images, labels) in train_loader:
+            images = images.to(mps_device)
+            labels = labels.to(mps_device)
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+            
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+        print(f'Epoch [{epoch+1}/{20}], Loss: {loss.item():.4f}')
+    end_time = time.time()
+
+
+    # evaluate model performance
+    model.eval()
+    correct, total = 0,0 
+    with torch.no_grad():
+        for images, labels in test_loader:
+            images = images.to(mps_device)
+            labels = labels.to(mps_device)
+            outputs = model(images)
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+    accuracy = (correct/total) * 100 
+    
+    total_time = end_time - start_time
+
+    print(f"took {total_time:.2f} seconds to train, and", end=" ")
+    print(f"final model accuracy is {accuracy:.2f}%")
 
 if __name__ == "__main__":
-    part2()
+    part2(True)
