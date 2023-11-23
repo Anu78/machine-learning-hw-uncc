@@ -1,0 +1,15 @@
+## GeoGuessr AI 
+A machine learning model to predict where a picture was taken in the US within 50 miles, consistently. 
+
+### Scope
+To begin, this model will learn to predict locations in the US. If that is a success, the model will be expanded to other countries.
+
+### Process
+TBA 
+
+
+### Questions I don't know the answer to 
+1. How many input pictures should the model receive per prediction? Just one, or three? 
+2. Should we pick locations randomly within each state or follow a grid system? 
+3. Should the amount of locations per state be the same regardless of the area of the state? Will having a larger percentage (5%) of the training data in one state reduce model performance? 
+4. Should the model return a probability array of 50 states (classification) or return a lat/long pair (regression)? 

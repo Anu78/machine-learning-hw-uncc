@@ -17,7 +17,6 @@ if torch.backends.mps.is_available():
 else:
     print("MPS device not found.")
 
-
 # create dataloader class for housing.csv, housing-valid.csv
 class HousingDataset(Dataset):
     def __init__(self, csvfile, transform=None, qty=True):
