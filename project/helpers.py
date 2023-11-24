@@ -1,4 +1,5 @@
 from __future__ import division
+from shapely import get_x, get_y
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -68,7 +69,7 @@ class Shapefile:
                 for y in np.arange(miny, maxy, gridSpace):
                     point = Point(x, y)
                     if polygon.contains(point):
-                        np.append(gridPoints, point)
+                        np.append(gridPoints, (get_x(point), get_y(point)))
             np.append(final, gridPoints)
         
         print(f"total of {total} locations. ")

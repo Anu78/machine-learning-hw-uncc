@@ -22,29 +22,9 @@ To begin, this model will learn to predict locations in the US. If that is a suc
 5. Can the loss function just be the difference in lat/long (MSE loss) or do I need to have a more accurate formula? 
 
 ### The answers 
+1. One picture
+2. Grid system for now. I don't see an issue with this at the moment. This way, we are guaranteed to cover the entire state.
+3. Locations per state is currently based on the state's area and then multiplied by a factor between 1.3 and 0.7 depending on how diverse the landscape of the state is compared to all other states. 
+4. This will be a regression model. Hawaii being so far away from the other states might become a problem for our loss function later. 
+5. (predicted lat - real lat) ** 2 + (predicted long - real long) ** 2. Simple MSE. Might have to adjust this in case of Hawaii.
 
-Number of Input Pictures per Prediction:
-
-    Pros of Using One Picture: Simpler model, less computational load, quicker predictions.
-    Pros of Using Multiple Pictures: More context, potentially more accurate predictions, especially in areas where single images might be ambiguous.
-    Recommendation: Start with one picture to establish a baseline. If accuracy is not satisfactory, consider experimenting with multiple images.
-    Location Selection: Random vs. Grid System:
-
-Random Selection: Ensures a diverse set of images, reducing the chance of bias towards certain types of locations.
-Grid System: Provides a structured and even coverage, ensuring all regions are represented.
-Recommendation: Use a hybrid approach. Start with a grid system for even coverage, and then introduce randomness within each grid cell to capture diversity.
-Locations per State and Training Data Distribution:
-
-Equal Distribution by State: Might not represent the actual diversity and size differences between states.
-Proportional Distribution: Reflects the geographical and cultural diversity more accurately.
-Recommendation: Consider a proportional approach based on factors like state area, population density, and diversity of landscapes. This helps in learning features relevant to larger or more diverse states more effectively.
-Model Output: Classification vs. Regression:
-
-Classification (State Probability Array): Easier to implement, but less precise.
-Regression (Lat/Long Pair): Offers more precise location prediction, but is more complex.
-Recommendation: Given your goal of predicting locations within 50 miles, a regression approach seems more appropriate. However, start with a classification model to establish a baseline and then transition to regression for finer precision.
-Loss Function:
-
-MSE Loss for Lat/Long: Simple and directly aligns with your objective.
-Geospatially-Aware Loss Function: Accounts for the actual distance between predicted and true locations, considering the Earth's curvature.
-Recommendation: Begin with a simple MSE loss for ease of implementation. If the results are not satisfactory, consider a more complex, geospatially-aware loss function like the Haversine formula or a similar approach.

@@ -43,12 +43,15 @@ class StreetViewAPI:
             for i, response in enumerate(responses):
                 print(f"Response from URL {i + 1}: {response[:50]}...")
     
-    def testAPI(self, fov, heading, pitch, coordinates):
+    def testAPI(self, heading, pitch, coordinates):
         response = requests.get(self.url, params={
-            fov: fov,
-            heading: heading,
-            pitch: pitch,
-            coordinates: f"{coordinates[0]},{coordinates[1]}"
+            "heading": heading,
+            "pitch": pitch,
+            "location": f"{coordinates[0]},{coordinates[1]}"
             })
+        print(response.headers)
 
-        print(response.text) 
+        image_bytes = response.content
+        
+        with open("./test.jpg", "wb") as file:
+            file.write(image_bytes)
