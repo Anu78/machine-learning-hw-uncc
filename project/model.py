@@ -7,3 +7,5 @@ class GeoguessrModel(nn.Module):
 
     def forward(self, x):
         pass
+
+

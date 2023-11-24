@@ -1,25 +1,26 @@
 import asyncio
+import requests
 import aiohttp
+from dotenv import dotenv_values
 
+config = dotenv_values(".env")
+MAPS_KEY = config["MAPS_KEY"]
 
 class StreetViewAPI:
-    def __init__(self, imageSize, fov, apiKey, signature):
+    def __init__(self, imageSize, fov):
         self.url = "https://maps.googleapis.com/maps/api/streetview?"
-        
         self.url += f"size={imageSize[0]}x{imageSize[1]}&"
         self.url += f"fov={fov}&"
-        self.url += f"key={apiKey}&"
-        self.url += f"signature={signature}&"
-
+        self.url += f"key={MAPS_KEY}"
 
     async def fetchURL(self, url, session):
         """
         Gathers a list of asyncio tasks for response(). not intended for use by user.
         """
         async with session.get(url) as response:
-            return await response.text()
+            return await response.text
 
-    def generateURLs(self, coordinate, heading, pitch):
+    def generateURL(self, coordinate, heading, pitch):
         """
         Returns a complete Maps API url for the given parameters.
         """
@@ -29,11 +30,10 @@ class StreetViewAPI:
         customURL += f"pitch={pitch}"
         return customURL
 
-    async def response(self, batch_size=50):
+    async def response(self, urls):
         """
         Performs multiple requests asynchronously and returns all responses. 
         """
-        urls = self.generateURLs()
 
         async with aiohttp.ClientSession() as session:
             tasks = [self.fetchURL(url, session) for url in urls]
@@ -42,3 +42,13 @@ class StreetViewAPI:
 
             for i, response in enumerate(responses):
                 print(f"Response from URL {i + 1}: {response[:50]}...")
+    
+    def testAPI(self, fov, heading, pitch, coordinates):
+        response = requests.get(self.url, params={
+            fov: fov,
+            heading: heading,
+            pitch: pitch,
+            coordinates: f"{coordinates[0]},{coordinates[1]}"
+            })
+
+        print(response.text) 

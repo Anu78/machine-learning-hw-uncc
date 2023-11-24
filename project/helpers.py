@@ -4,67 +4,24 @@ import matplotlib.pyplot as plt
 import numpy as np
 from shapely import Point
 
-state_codes = {
-    "AL": "Alabama",
-    "AK": "Alaska",
-    "AZ": "Arizona",
-    "AR": "Arkansas",
-    "CA": "California",
-    "CO": "Colorado",
-    "CT": "Connecticut",
-    "DE": "Delaware",
-    "FL": "Florida",
-    "GA": "Georgia",
-    "HI": "Hawaii",
-    "ID": "Idaho",
-    "IL": "Illinois",
-    "IN": "Indiana",
-    "IA": "Iowa",
-    "KS": "Kansas",
-    "KY": "Kentucky",
-    "LA": "Louisiana",
-    "ME": "Maine",
-    "MD": "Maryland",
-    "MA": "Massachusetts",
-    "MI": "Michigan",
-    "MN": "Minnesota",
-    "MS": "Mississippi",
-    "MO": "Missouri",
-    "MT": "Montana",
-    "NE": "Nebraska",
-    "NV": "Nevada",
-    "NH": "New Hampshire",
-    "NJ": "New Jersey",
-    "NM": "New Mexico",
-    "NY": "New York",
-    "NC": "North Carolina",
-    "ND": "North Dakota",
-    "OH": "Ohio",
-    "OK": "Oklahoma",
-    "OR": "Oregon",
-    "PA": "Pennsylvania",
-    "RI": "Rhode Island",
-    "SC": "South Carolina",
-    "SD": "South Dakota",
-    "TN": "Tennessee",
-    "TX": "Texas",
-    "UT": "Utah",
-    "VT": "Vermont",
-    "VA": "Virginia",
-    "WA": "Washington",
-    "WV": "West Virginia",
-    "WI": "Wisconsin",
-    "WY": "Wyoming"
+state_diversity = {
+    'TX': 1, 'MT': 2, 'CA': 3, 'WA': 4, 'DE': 5, 'CO': 6, 'LA': 7, 'MD': 8, 'FL': 9, 'NJ': 10, 
+    'ID': 11, 'OR': 12, 'NC': 13, 'UT': 14, 'RI': 15, 'OK': 16, 'MI': 17, 'HI': 18, 'NM': 18, 'WI': 19, 
+    'OH': 20, 'MA': 21, 'MN': 22, 'SC': 23, 'NY': 24, 'TN': 25, 'VA': 26, 'WY': 27, 'SD': 28, 
+    'CT': 29, 'KY': 30, 'GA': 31, 'MS': 32, 'AR': 33, 'NE': 34, 'MO': 35, 'PA': 36, 'AL': 37, 
+    'IN': 38, 'KS': 39, 'AZ': 40, 'ND': 41, 'IL': 42, 'NV': 43, 'VT': 44, 'ME': 45, 'NH': 46, 
+    'WV': 47, 'IA': 48
 }
 
 class Shapefile:
-    def __init__(self, path, gridSpace):
+    def __init__(self, path, ):
         """
         path -> path to a .shx shapefile
         """
         gpd.options.io_engine = "pyogrio"  # use the faster engine for geopandas
         self.gdf = gpd.read_file(path)
-        self.gridSpace = gridSpace
+        self.LOC_EQUATION = lambda area: -0.0415168*area*area + 8.4791*area + 23.43
+        self.DIVER_EQUATION = lambda rank: 1.3 - ((rank-1)*(0.6))/(47)
 
     def plot(self, size=5):
         """
@@ -75,6 +32,15 @@ class Shapefile:
         ax.set_title("US States Map")
         plt.xlabel("Longitude")
         plt.ylabel("Latitude")
+    
+    def gridSpacingForState(self, bounds, area, stateCode):
+        """
+        Returns the grid spacing for a state considering some parameters.
+        """
+        minx, miny, maxx, maxy = bounds
+        
+        locationsPerState = int(self.LOC_EQUATION(area) * self.DIVER_EQUATION(state_diversity[stateCode])) 
+        return ((maxx - minx) * (maxy - miny)) / locationsPerState, locationsPerState
 
     def generateCoordinates(self):
         """
@@ -86,23 +52,27 @@ class Shapefile:
             polygon = row["geometry"]
             area = polygon.area
             stateCode = row["State_Code"]
-
-            minx, miny, maxx, maxy = polygon.bounds
             
-            total += (maxy-miny)/self.gridSpace + (maxx - minx)/self.gridSpace
+            if stateCode == "AK" or stateCode == "DC":
+                continue # not enough google street view data in alaska; why is DC on the state list?  
+             
+            # calculate gridspace so that there are 400 locations per state. 
+            gridSpace, locs = self.gridSpacingForState(polygon.bounds, area, stateCode)
+            total += locs
+            minx, miny, maxx, maxy = polygon.bounds
 
-            print(f"processing {state_codes.get(stateCode)} | area: {area:.2f} | {total:.0f} data points")
+            print(f"processing {stateCode} | area: {area:.2f} | {locs} locations")
 
             gridPoints = np.array([])
-            for x in np.arange(minx, maxx, self.gridSpace):
-                for y in np.arange(miny, maxy, self.gridSpace):
+            for x in np.arange(minx, maxx, gridSpace):
+                for y in np.arange(miny, maxy, gridSpace):
                     point = Point(x, y)
                     if polygon.contains(point):
                         np.append(gridPoints, point)
             np.append(final, gridPoints)
-
-        return final, total
-
+        
+        print(f"total of {total} locations. ")
+        return final
 
 def distBetweenCoordinates(first, second, iterations=100) -> float:
     """
@@ -203,4 +173,3 @@ def savePairs(coordinates, labels, label_name) -> None:
     Saves images and labels as an npz file for training.
     """
     np.savez_compressed(file=base_path+label_name)
-    pass

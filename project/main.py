@@ -1,19 +1,13 @@
-import os
 from api import StreetViewAPI
 from dotenv import load_dotenv
 from helpers import Shapefile
 from helpers import distBetweenCoordinates
 import matplotlib.pyplot as plt
 
-load_dotenv()
-
-
 def main():
     path = "data/shapefiles/States_shapefile.shx"
-    s = Shapefile(path, gridSpace=0.25)
-    res, total = s.generateCoordinates()
-
-    print(f"{total} datapoints")
+    s = Shapefile(path) 
+    res = s.generateCoordinates()
 
     # plots all coverage points over US map - will move to helper function later
     # s.plot()
