@@ -26,7 +26,7 @@ def combine(stateCode, tempPath):
     print(f"writing {stateCode} to files.")
     stateShapefile.write(os.path.join("./data/shapefiles", stateCode, "Shapefile.shp"))
 
-def main():
+def main(fips_start):
     tempdir = tempfile.TemporaryDirectory()
     tempPath = tempdir.name
 
@@ -34,9 +34,17 @@ def main():
 
     soup = BeautifulSoup(response, "html.parser")
     currentState = None
+    threshold = False
     for link in soup.find_all('a', attrs={'href': re.compile("^tl_rd22")}):
 
         fips = int(re.findall(digit_pattern, link.get('href'))[1])
+        if not threshold:
+            if fips >= fips_start:
+                threshold = True
+            else:
+                continue
+        if fips > 56045:
+            break
         location = df[df['fips'] == fips]
         
         if location.empty:
@@ -76,8 +84,8 @@ def main():
             print(f"Download of {download} failed.")
     
     if currentState is not None:
-        combine(currentState)
+        combine(currentState, tempPath)
         tempdir.cleanup()
 
 if __name__ == "__main__":
-    main()
+    main(56001)
