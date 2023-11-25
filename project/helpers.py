@@ -4,25 +4,76 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 from shapely import Point
+import pandas as pd
 
-state_diversity = {
-    'TX': 1, 'MT': 2, 'CA': 3, 'WA': 4, 'DE': 5, 'CO': 6, 'LA': 7, 'MD': 8, 'FL': 9, 'NJ': 10, 
-    'ID': 11, 'OR': 12, 'NC': 13, 'UT': 14, 'RI': 15, 'OK': 16, 'MI': 17, 'HI': 18, 'NM': 18, 'WI': 19, 
-    'OH': 20, 'MA': 21, 'MN': 22, 'SC': 23, 'NY': 24, 'TN': 25, 'VA': 26, 'WY': 27, 'SD': 28, 
-    'CT': 29, 'KY': 30, 'GA': 31, 'MS': 32, 'AR': 33, 'NE': 34, 'MO': 35, 'PA': 36, 'AL': 37, 
-    'IN': 38, 'KS': 39, 'AZ': 40, 'ND': 41, 'IL': 42, 'NV': 43, 'VT': 44, 'ME': 45, 'NH': 46, 
-    'WV': 47, 'IA': 48
-}
 
 class Shapefile:
-    def __init__(self, path, ):
+    def __init__(
+        self,
+        path = None,
+    ):
         """
         path -> path to a .shx shapefile
         """
         gpd.options.io_engine = "pyogrio"  # use the faster engine for geopandas
-        self.gdf = gpd.read_file(path)
-        self.LOC_EQUATION = lambda area: -0.0415168*area*area + 8.4791*area + 23.43
-        self.DIVER_EQUATION = lambda rank: 1.3 - ((rank-1)*(0.6))/(47)
+        self.gdf = None
+        if path is not None:
+            self.gdf = gpd.read_file(path)
+        self.LOC_EQUATION = (
+            lambda area: -0.0415168 * area * area + 8.4791 * area + 23.43
+        )
+        self.DIVER_EQUATION = lambda rank: 1.3 - ((rank - 1) * (0.6)) / (47)
+        self.state_diversity = {
+    "TX": 1,
+    "MT": 2,
+    "CA": 3,
+    "WA": 4,
+    "DE": 5,
+    "CO": 6,
+    "LA": 7,
+    "MD": 8,
+    "FL": 9,
+    "NJ": 10,
+    "ID": 11,
+    "OR": 12,
+    "NC": 13,
+    "UT": 14,
+    "RI": 15,
+    "OK": 16,
+    "MI": 17,
+    "HI": 18,
+    "NM": 18,
+    "WI": 19,
+    "OH": 20,
+    "MA": 21,
+    "MN": 22,
+    "SC": 23,
+    "NY": 24,
+    "TN": 25,
+    "VA": 26,
+    "WY": 27,
+    "SD": 28,
+    "CT": 29,
+    "KY": 30,
+    "GA": 31,
+    "MS": 32,
+    "AR": 33,
+    "NE": 34,
+    "MO": 35,
+    "PA": 36,
+    "AL": 37,
+    "IN": 38,
+    "KS": 39,
+    "AZ": 40,
+    "ND": 41,
+    "IL": 42,
+    "NV": 43,
+    "VT": 44,
+    "ME": 45,
+    "NH": 46,
+    "WV": 47,
+    "IA": 48,
+}
 
     def plot(self, size=5):
         """
@@ -33,14 +84,17 @@ class Shapefile:
         ax.set_title("US States Map")
         plt.xlabel("Longitude")
         plt.ylabel("Latitude")
-    
+        plt.show()
+
     def gridSpacingForState(self, bounds, area, stateCode):
         """
-        Returns the grid spacing for a state considering some parameters.
+        Returns the grid spacing for a state considering area and land diversity parameters.
         """
         minx, miny, maxx, maxy = bounds
-        
-        locationsPerState = int(self.LOC_EQUATION(area) * self.DIVER_EQUATION(state_diversity[stateCode])) 
+
+        locationsPerState = int(
+            self.LOC_EQUATION(area) * self.DIVER_EQUATION(self.state_diversity[stateCode])
+        )
         return ((maxx - minx) * (maxy - miny)) / locationsPerState, locationsPerState
 
     def generateCoordinates(self):
@@ -53,11 +107,11 @@ class Shapefile:
             polygon = row["geometry"]
             area = polygon.area
             stateCode = row["State_Code"]
-            
+
             if stateCode == "AK" or stateCode == "DC":
-                continue # not enough google street view data in alaska; why is DC on the state list?  
-             
-            # calculate gridspace so that there are 400 locations per state. 
+                continue  # not enough google street view data in alaska; why is DC on the state list?
+
+            # calculate gridspace so that there are 400 locations per state.
             gridSpace, locs = self.gridSpacingForState(polygon.bounds, area, stateCode)
             total += locs
             minx, miny, maxx, maxy = polygon.bounds
@@ -71,9 +125,45 @@ class Shapefile:
                     if polygon.contains(point):
                         np.append(gridPoints, (get_x(point), get_y(point)))
             np.append(final, gridPoints)
-        
+
         print(f"total of {total} locations. ")
         return final
+
+    def combine(self, path):
+        """
+        Appends the supplied shapefile to the current object. 
+        """
+        
+        try:
+            if self.gdf is None:
+                self.gdf = gpd.read_file(path)
+                return
+            gdf2 = gpd.read_file(path)
+
+            # Perform the combination here inside the try block, where gdf2 is known to be defined
+            combined_shape = gpd.GeoDataFrame(pd.concat([self.gdf, gdf2], ignore_index=True))        
+            combined_shape = combined_shape.set_geometry(combined_shape.geometry)
+            
+            self.gdf = combined_shape
+
+        except Exception as e:
+            print(f"An error occurred while reading the shapefile.\n {e}")
+            return
+
+    def write(self, path):
+        import os
+        """
+        Saves this shapefile object to disk. 
+        """
+        # Extract the directory from the provided path
+        directory = os.path.dirname(path)
+
+        # Create the directory if it doesn't exist
+        os.makedirs(directory, exist_ok=True)
+
+        # Save the GeoDataFrame to the specified path
+        self.gdf.to_file(path)
+
 
 def distBetweenCoordinates(first, second, iterations=100) -> float:
     """
@@ -173,4 +263,4 @@ def savePairs(coordinates, labels, label_name) -> None:
     """
     Saves images and labels as an npz file for training.
     """
-    np.savez_compressed(file=base_path+label_name)
+    np.savez_compressed(file=base_path + label_name)

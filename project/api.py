@@ -6,6 +6,7 @@ from dotenv import dotenv_values
 config = dotenv_values(".env")
 MAPS_KEY = config["MAPS_KEY"]
 
+
 class StreetViewAPI:
     def __init__(self, imageSize, fov):
         self.url = "https://maps.googleapis.com/maps/api/streetview?"
@@ -32,7 +33,7 @@ class StreetViewAPI:
 
     async def response(self, urls):
         """
-        Performs multiple requests asynchronously and returns all responses. 
+        Performs multiple requests asynchronously and returns all responses.
         """
 
         async with aiohttp.ClientSession() as session:
@@ -42,16 +43,19 @@ class StreetViewAPI:
 
             for i, response in enumerate(responses):
                 print(f"Response from URL {i + 1}: {response[:50]}...")
-    
+
     def testAPI(self, heading, pitch, coordinates):
-        response = requests.get(self.url, params={
-            "heading": heading,
-            "pitch": pitch,
-            "location": f"{coordinates[0]},{coordinates[1]}"
-            })
+        response = requests.get(
+            self.url,
+            params={
+                "heading": heading,
+                "pitch": pitch,
+                "location": f"{coordinates[0]},{coordinates[1]}",
+            },
+        )
         print(response.headers)
 
         image_bytes = response.content
-        
+
         with open("./test.jpg", "wb") as file:
             file.write(image_bytes)

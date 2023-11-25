@@ -1,5 +1,6 @@
 import torch.nn as nn
-import numpy as np 
+import numpy as np
+
 
 class GeoguessrModel(nn.Module):
     def __init__(self):
@@ -7,5 +8,3 @@ class GeoguessrModel(nn.Module):
 
     def forward(self, x):
         pass
-
-
