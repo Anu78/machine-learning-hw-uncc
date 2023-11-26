@@ -113,35 +113,6 @@ def ntrain(model, epochs, optimizer, loss_function, dataloader, valid_data):
 
     return model
 
-def ntrain(model, epochs, optimizer, loss_function, dataloader, valid_data):
-    valid_loader = DataLoader(
-        valid_data,
-        batch_size=128,
-    )
-    for epoch in range(epochs + 1):
-        model.train()
-        for features, outcomes in dataloader:
-            ypred = model(features)
-            loss = loss_function(ypred, outcomes)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-        if epoch % (epochs // 10) == 0:
-            # calculate and print validation accuracy
-            model.eval()
-            with torch.no_grad():
-                valid_loss = 0
-                for vf, vo in valid_loader:
-                    vypred = model(vf)
-                    valid_loss += loss_function(vypred, vo).item()
-
-                valid_loss /= len(valid_loader)
-
-            print(f"Epoch {epoch}, Loss: {loss.item()}, Validation Loss: {valid_loss}")
-
-    return model
-
 class CifarModel1(nn.Module):
     def __init__(self):
         super(CifarModel1, self).__init__()
