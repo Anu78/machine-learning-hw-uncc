@@ -1,6 +1,10 @@
 import asyncio
-import requests
+import random
 import aiohttp
+from PIL import Image
+import io
+import numpy as np
+import requests
 from dotenv import dotenv_values
 
 config = dotenv_values(".env")
@@ -9,53 +13,73 @@ MAPS_KEY = config["MAPS_KEY"]
 
 class StreetViewAPI:
     def __init__(self, imageSize, fov):
-        self.url = "https://maps.googleapis.com/maps/api/streetview?"
-        self.url += f"size={imageSize[0]}x{imageSize[1]}&"
-        self.url += f"fov={fov}&"
-        self.url += f"key={MAPS_KEY}"
+        self.imageSize = imageSize
+        self.fov = fov
+        self.staticBaseURL = "https://maps.googleapis.com/maps/api/streetview"
+        self.metadataBaseURL = (
+            "https://maps.googleapis.com/maps/api/streetview/metadata"
+        )
+        self.images = []
+        self.coordinates = []
+
+    async def generateURLs(self, coordinates, pitch=0):
+        urls = []
+        for lat, lng in coordinates:
+            heading = random.randint(0, 360)
+            url = f"{self.staticBaseURL}?size={self.imageSize[0]}x{self.imageSize[1]}&fov={self.fov}&location={lat},{lng}&heading={heading}&pitch={pitch}&key={MAPS_KEY}"
+            urls.append(url)
+        return urls
+
+    async def validateCoordinates(self, coordinates):
+        urls = [
+            f"{self.metadataBaseURL}?location={lat},{lng}&key={MAPS_KEY}"
+            for lat, lng in coordinates
+        ]
+        responses = await self.fetchMultiple(urls)
+        validCoords = [
+            (res["location"]["lat"], res["location"]["lng"])
+            for res in responses
+            if res["status"] == "OK"
+        ]
+        print(f"Validated {len(validCoords)} out of {len(coordinates)} coordinates.")
+        return validCoords
+
+    async def fetchMultiple(self, urls, batchSize=50):
+        responses = []
+        n = len(urls) // batchSize
+        for i in range(0, len(urls), batchSize):
+            print(f"on batch {i//batchSize} out of {n}")
+            batch = urls[i : i + batchSize]
+            async with aiohttp.ClientSession() as session:
+                tasks = [self.fetchURL(url, session) for url in batch]
+                responses.extend(await asyncio.gather(*tasks))
+        return responses
 
     async def fetchURL(self, url, session):
-        """
-        Gathers a list of asyncio tasks for response(). not intended for use by user.
-        """
         async with session.get(url) as response:
-            return await response.text
+            content_type = response.headers["Content-Type"]
+            if "application/json" in content_type:
+                return await response.json()
+            return await response.read()
 
-    def generateURL(self, coordinate, heading, pitch):
-        """
-        Returns a complete Maps API url for the given parameters.
-        """
-        # add coordinate, heading, pitch to url
-        customURL = self.url + f"location:{coordinate[0]},{coordinate[1]}&"
-        customURL += f"heading={heading}&"
-        customURL += f"pitch={pitch}"
-        return customURL
+    async def saveImages(self, coordinates, batchSize=50):
+        self.coordinates = await self.validateCoordinates(coordinates)
+        imageUrls = await self.generateURLs(self.coordinates)
+        byteDataList = await self.fetchMultiple(imageUrls, batchSize=batchSize)
 
-    async def response(self, urls):
-        """
-        Performs multiple requests asynchronously and returns all responses.
-        """
+        for byteData in byteDataList:
+            image = Image.open(io.BytesIO(byteData))
+            npImg = np.array(image).astype(np.float32) / 255.0
+            self.images.append(npImg)
 
-        async with aiohttp.ClientSession() as session:
-            tasks = [self.fetchURL(url, session) for url in urls]
+        self.writeDataToFile("./data/compressed/NC.npz")
 
-            responses = await asyncio.gather(*tasks)
+    def writeDataToFile(self, path):
+        np.savez_compressed(path, images=self.images, coords=self.coordinates)
 
-            for i, response in enumerate(responses):
-                print(f"Response from URL {i + 1}: {response[:50]}...")
-
-    def testAPI(self, heading, pitch, coordinates):
-        response = requests.get(
-            self.url,
-            params={
-                "heading": heading,
-                "pitch": pitch,
-                "location": f"{coordinates[0]},{coordinates[1]}",
-            },
-        )
-        print(response.headers)
-
-        image_bytes = response.content
-
+    # Test method for synchronous API call - useful for debugging
+    def testAPI(self, heading, pitch, coordinate):
+        url = f"{self.staticBaseURL}?size={self.imageSize[0]}x{self.imageSize[1]}&fov={self.fov}&location={coordinate[0]},{coordinate[1]}&heading={heading}&pitch={pitch}&key={MAPS_KEY}"
+        response = requests.get(url)
         with open("./test.jpg", "wb") as file:
-            file.write(image_bytes)
+            file.write(response.content)
