@@ -9,10 +9,12 @@ To begin, this model will learn to predict locations in the US. If that is a suc
 2. 
 
 ### Roadmap 
-- [ ] Set up google cloud project and get api key
-- [ ] Write api implementation (fetch multiple images at a time)
-- [ ] Figure out how to get a grid of lat/long pairs from shapefile for NC
-- [ ] Test model architecture on NC
+- [] Make saving images faster and more consistent. Try to reduce storage space. 
+- [] 
+- [] Test model architecture on NC
+- [x] Set up google cloud project and get api key
+- [x] Write api implementation (fetch multiple images at a time)
+- [x] Figure out how to get a grid of lat/long pairs from shapefile for NC
 
 ### Questions I don't know the answer to 
 1. How many input pictures should the model receive per prediction? Just one, or three? 

@@ -1,4 +1,5 @@
 import asyncio
+import h5py
 import random
 import aiohttp
 from PIL import Image
@@ -19,8 +20,8 @@ class StreetViewAPI:
         self.metadataBaseURL = (
             "https://maps.googleapis.com/maps/api/streetview/metadata"
         )
-        self.images = []
-        self.coordinates = []
+        self.images = np.array([])
+        self.coordinates = np.array([]) 
 
     async def generateURLs(self, coordinates, pitch=0):
         urls = []
@@ -63,23 +64,25 @@ class StreetViewAPI:
             return await response.read()
 
     async def saveImages(self, coordinates, batchSize=50):
-        self.coordinates = await self.validateCoordinates(coordinates)
+        self.coordinates = np.array(await self.validateCoordinates(coordinates))
         imageUrls = await self.generateURLs(self.coordinates)
         byteDataList = await self.fetchMultiple(imageUrls, batchSize=batchSize)
 
         for byteData in byteDataList:
             image = Image.open(io.BytesIO(byteData))
             npImg = np.array(image).astype(np.float32) / 255.0
-            self.images.append(npImg)
+            np.append(self.images, npImg)
 
-        self.writeDataToFile("./data/compressed/NC.npz")
+        self.writeDataToFile("./data/compressed/NC.h5")
 
     def writeDataToFile(self, path):
-        np.savez_compressed(path, images=self.images, coords=self.coordinates)
+        # split dataset into training and validation
+        lenI = int(len(self.images) * 0.9)
+        lenC = int(len(self.coordinates) * 0.9)
 
-    # Test method for synchronous API call - useful for debugging
-    def testAPI(self, heading, pitch, coordinate):
-        url = f"{self.staticBaseURL}?size={self.imageSize[0]}x{self.imageSize[1]}&fov={self.fov}&location={coordinate[0]},{coordinate[1]}&heading={heading}&pitch={pitch}&key={MAPS_KEY}"
-        response = requests.get(url)
-        with open("./test.jpg", "wb") as file:
-            file.write(response.content)
+        with h5py.File(path, 'w') as hdf:
+            hdf.create_dataset('trainImages', data=self.images[:lenI], compression="gzip", compression_opts=9)
+            hdf.create_dataset('validImages', data=self.images[lenI:], compression="gzip", compression_opts=9)
+
+            hdf.create_dataset('trainCoords', data=self.coordinates[lenC:], compression="gzip", compression_opts=9)
+            hdf.create_dataset('validCoords', data=self.coordinates[:lenC], compression="gzip", compression_opts=9)

@@ -1,6 +1,5 @@
 from api import StreetViewAPI
-from helpers import Shapefile
-from helpers import unpackNPZ
+from helpers import Shapefile, unpackHDF
 import asyncio
 
 
@@ -21,13 +20,13 @@ async def main():
     path = "data/shapefiles/NC/Shapefile.shp"
     s = Shapefile(path)
     # s.plot()
-    res = s.generateCoordinates(locations=200)
+    res = s.generateCoordinates(locations=10)
 
     api = StreetViewAPI(imageSize=(640, 480), fov=80)
 
     await api.saveImages(coordinates=res, batchSize=50)
 
-    images = unpackNPZ("./data/compressed/NC.npz")
+    unpackHDF("./data/compressed/NC.h5")
 
 
 if __name__ == "__main__":

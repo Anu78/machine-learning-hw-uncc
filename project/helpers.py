@@ -1,4 +1,5 @@
 from __future__ import division
+import h5py
 from shapely.geometry import LineString
 import random
 import os
@@ -7,16 +8,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from shapely import get_x, get_y
-
-
-def unpackNPZ(npz):
-    data = np.load(npz, allow_pickle=True)
-
-    for key in data:
-        length = len(data[key])
-        print(f"length of array {key}: {length}")
-
-    return data
 
 
 class Shapefile:
@@ -260,3 +251,8 @@ def filestream(path):
         iterable.append(os.path.join(""))
 
     return iterable
+
+def unpackHDF(path):
+    dataset = h5py.File(path, 'r')
+    keys = list(dataset.keys())
+    print(f"loaded {keys}")
