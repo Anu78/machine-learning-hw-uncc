@@ -21,7 +21,7 @@ class StreetViewAPI:
             "https://maps.googleapis.com/maps/api/streetview/metadata"
         )
         self.images = np.array([])
-        self.coordinates = np.array([]) 
+        self.coordinates = np.array([])
 
     async def generateURLs(self, coordinates, pitch=0):
         urls = []
@@ -68,10 +68,13 @@ class StreetViewAPI:
         imageUrls = await self.generateURLs(self.coordinates)
         byteDataList = await self.fetchMultiple(imageUrls, batchSize=batchSize)
 
+        imageList = []
         for byteData in byteDataList:
             image = Image.open(io.BytesIO(byteData))
             npImg = np.array(image).astype(np.float32) / 255.0
-            np.append(self.images, npImg)
+            imageList.append(npImg)
+
+        self.images = np.array(imageList)
 
         self.writeDataToFile("./data/compressed/NC.h5")
 
@@ -80,9 +83,29 @@ class StreetViewAPI:
         lenI = int(len(self.images) * 0.9)
         lenC = int(len(self.coordinates) * 0.9)
 
-        with h5py.File(path, 'w') as hdf:
-            hdf.create_dataset('trainImages', data=self.images[:lenI], compression="gzip", compression_opts=9)
-            hdf.create_dataset('validImages', data=self.images[lenI:], compression="gzip", compression_opts=9)
+        with h5py.File(path, "w") as hdf:
+            hdf.create_dataset(
+                "trainImages",
+                data=self.images[:lenI],
+                compression="gzip",
+                compression_opts=9,
+            )
+            hdf.create_dataset(
+                "validImages",
+                data=self.images[lenI:],
+                compression="gzip",
+                compression_opts=9,
+            )
 
-            hdf.create_dataset('trainCoords', data=self.coordinates[lenC:], compression="gzip", compression_opts=9)
-            hdf.create_dataset('validCoords', data=self.coordinates[:lenC], compression="gzip", compression_opts=9)
+            hdf.create_dataset(
+                "trainCoords",
+                data=self.coordinates[:lenC],
+                compression="gzip",
+                compression_opts=9,
+            )
+            hdf.create_dataset(
+                "validCoords",
+                data=self.coordinates[lenC:],
+                compression="gzip",
+                compression_opts=9,
+            )

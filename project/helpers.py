@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from shapely import get_x, get_y
+from PIL import Image
 
 
 class Shapefile:
@@ -252,7 +253,21 @@ def filestream(path):
 
     return iterable
 
+
 def unpackHDF(path):
-    dataset = h5py.File(path, 'r')
-    keys = list(dataset.keys())
-    print(f"loaded {keys}")
+    with h5py.File(path, "r") as dataset:
+        keys = list(dataset.keys())
+        print(f"loaded {keys}")
+        trainImages = dataset["trainImages"]
+        validImages = dataset["validImages"]
+        trainCoords = dataset["trainCoords"]
+        validCoords = dataset["validCoords"]
+
+        first = trainImages[0]
+        coord = trainCoords[0]
+
+        print(coord)
+
+        show = (first * 255).astype(np.uint8)
+        img = Image.fromarray(show)
+        img.show()
