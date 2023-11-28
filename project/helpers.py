@@ -149,6 +149,7 @@ class Shapefile:
         # Save the GeoDataFrame to the specified path
         self.gdf.to_file(path)
 
+
 def distBetweenCoordinates(first, second, iterations=100) -> float:
     """
     Returns the distance between two lat/long pairs (in miles)
@@ -241,6 +242,7 @@ def distBetweenCoordinates(first, second, iterations=100) -> float:
 
     return m * miles_conversion
 
+
 def filestream(path):
     """
     Returns an iterable of every shapefile in a list of folders.
@@ -250,6 +252,7 @@ def filestream(path):
         iterable.append(os.path.join(""))
 
     return iterable
+
 
 def unpackHDF(path):
     with h5py.File(path, "r") as dataset:

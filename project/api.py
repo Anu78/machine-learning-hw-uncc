@@ -11,6 +11,7 @@ from dotenv import dotenv_values
 config = dotenv_values(".env")
 MAPS_KEY = config["MAPS_KEY"]
 
+
 class StreetViewAPI:
     def __init__(self, imageSize, fov):
         self.imageSize = imageSize
@@ -64,8 +65,10 @@ class StreetViewAPI:
 
     async def saveImages(self, coordinates, path, batchSize=50):
         self.batchSize = batchSize
-        print(f"Starting the process to save images for {len(coordinates)} coordinates.")
-        
+        print(
+            f"Starting the process to save images for {len(coordinates)} coordinates."
+        )
+
         validatedCoordinates = await self.validateCoordinates(coordinates)
         self.coordinates = np.array(validatedCoordinates)
         print(f"Number of coordinates after validation: {len(self.coordinates)}")
@@ -74,7 +77,9 @@ class StreetViewAPI:
         byteDataList = await self.fetchMultiple(imageUrls)
 
         if len(byteDataList) != len(self.coordinates):
-            print(f"Warning: Number of fetched images ({len(byteDataList)}) does not match number of coordinates ({len(self.coordinates)})")
+            print(
+                f"Warning: Number of fetched images ({len(byteDataList)}) does not match number of coordinates ({len(self.coordinates)})"
+            )
 
         imageList = []
         for byteData in byteDataList:
