@@ -11,7 +11,6 @@ from dotenv import dotenv_values
 config = dotenv_values(".env")
 MAPS_KEY = config["MAPS_KEY"]
 
-
 class StreetViewAPI:
     def __init__(self, imageSize, fov):
         self.imageSize = imageSize
@@ -22,6 +21,8 @@ class StreetViewAPI:
         )
         self.images = np.array([])
         self.coordinates = np.array([])
+        self.batchSize = 50
+        self.compressionStrength = 6
 
     async def generateURLs(self, coordinates, pitch=0):
         urls = []
@@ -42,15 +43,13 @@ class StreetViewAPI:
             for res in responses
             if res["status"] == "OK"
         ]
-        print(f"Validated {len(validCoords)} out of {len(coordinates)} coordinates.")
         return validCoords
 
-    async def fetchMultiple(self, urls, batchSize=50):
+    async def fetchMultiple(self, urls):
         responses = []
-        n = len(urls) // batchSize
-        for i in range(0, len(urls), batchSize):
-            print(f"on batch {i//batchSize} out of {n}")
-            batch = urls[i : i + batchSize]
+        n = len(urls) // self.batchSize
+        for i in range(0, len(urls), self.batchSize):
+            batch = urls[i : i + self.batchSize]
             async with aiohttp.ClientSession() as session:
                 tasks = [self.fetchURL(url, session) for url in batch]
                 responses.extend(await asyncio.gather(*tasks))
@@ -63,49 +62,62 @@ class StreetViewAPI:
                 return await response.json()
             return await response.read()
 
-    async def saveImages(self, coordinates, batchSize=50):
-        self.coordinates = np.array(await self.validateCoordinates(coordinates))
+    async def saveImages(self, coordinates, path, batchSize=50):
+        self.batchSize = batchSize
+        print(f"Starting the process to save images for {len(coordinates)} coordinates.")
+        
+        validatedCoordinates = await self.validateCoordinates(coordinates)
+        self.coordinates = np.array(validatedCoordinates)
+        print(f"Number of coordinates after validation: {len(self.coordinates)}")
+
         imageUrls = await self.generateURLs(self.coordinates)
-        byteDataList = await self.fetchMultiple(imageUrls, batchSize=batchSize)
+        byteDataList = await self.fetchMultiple(imageUrls)
+
+        if len(byteDataList) != len(self.coordinates):
+            print(f"Warning: Number of fetched images ({len(byteDataList)}) does not match number of coordinates ({len(self.coordinates)})")
 
         imageList = []
         for byteData in byteDataList:
-            image = Image.open(io.BytesIO(byteData))
-            npImg = np.array(image).astype(np.float32) / 255.0
-            imageList.append(npImg)
+            try:
+                image = Image.open(io.BytesIO(byteData))
+                npImg = np.array(image, dtype=np.uint8)
+                imageList.append(npImg)
+            except Exception as e:
+                print(f"Error processing image: {e}")
 
         self.images = np.array(imageList)
+        print(f"Number of images after fetching and processing: {len(self.images)}")
 
-        self.writeDataToFile("./data/compressed/NC.h5")
+        self.writeDataToFile(path)
 
     def writeDataToFile(self, path):
         # split dataset into training and validation
         lenI = int(len(self.images) * 0.9)
         lenC = int(len(self.coordinates) * 0.9)
-
+        print(f"Writing {lenI} images to {path}!")
         with h5py.File(path, "w") as hdf:
             hdf.create_dataset(
                 "trainImages",
                 data=self.images[:lenI],
                 compression="gzip",
-                compression_opts=9,
+                compression_opts=self.compressionStrength,
             )
             hdf.create_dataset(
                 "validImages",
                 data=self.images[lenI:],
                 compression="gzip",
-                compression_opts=9,
+                compression_opts=self.compressionStrength,
             )
 
             hdf.create_dataset(
                 "trainCoords",
                 data=self.coordinates[:lenC],
                 compression="gzip",
-                compression_opts=9,
+                compression_opts=self.compressionStrength,
             )
             hdf.create_dataset(
                 "validCoords",
                 data=self.coordinates[lenC:],
                 compression="gzip",
-                compression_opts=9,
+                compression_opts=self.compressionStrength,
             )
