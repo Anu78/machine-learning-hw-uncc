@@ -2,23 +2,19 @@ from __future__ import division
 import h5py
 from shapely.geometry import LineString
 import random
-import os
 import geopandas as gpd
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 from shapely import get_x, get_y
-from PIL import Image
+import os
 
 
 class Shapefile:
     def __init__(
         self,
+        state,
         path=None,
     ):
-        """
-        path -> path to a .sh(x,p) shapefile
-        """
         gpd.options.io_engine = "pyogrio"  # use the faster engine for geopandas
         self.gdf = None
         if path is not None:
@@ -79,7 +75,7 @@ class Shapefile:
             "WV": 47,
             "IA": 48,
         }
-
+        
     def plot(self, size=5):
         """
         Plots the polygons in a shapefile
@@ -254,13 +250,14 @@ def filestream(path):
     return iterable
 
 
-def unpackHDF(path):
+def unpackHDF(path, validation):
     with h5py.File(path, "r") as dataset:
         keys = list(dataset.keys())
-        print(f"loaded {keys}")
-        trainImages = dataset["trainImages"][:]
-        validImages = dataset["validImages"][:]
-        trainCoords = dataset["trainCoords"][:]
-        validCoords = dataset["validCoords"][:]
-
-        return trainImages, validImages, trainCoords, validCoords
+        if not validation:
+            trainImages = dataset["trainImages"][:]
+            trainCoords = dataset["trainCoords"][:]
+            return trainImages, trainCoords
+        else:
+            validImages = dataset["validImages"][:]
+            validCoords = dataset["validCoords"][:]
+            return validImages, validCoords

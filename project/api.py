@@ -5,7 +5,6 @@ import aiohttp
 from PIL import Image
 import io
 import numpy as np
-import requests
 from dotenv import dotenv_values
 
 config = dotenv_values(".env")
@@ -95,7 +94,7 @@ class StreetViewAPI:
 
         self.writeDataToFile(path)
 
-    def writeDataToFile(self, path):
+    def writeDataToFile(self, path, label):
         # split dataset into training and validation
         lenI = int(len(self.images) * 0.9)
         lenC = int(len(self.coordinates) * 0.9)
