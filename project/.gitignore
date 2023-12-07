@@ -3,5 +3,5 @@ data/models
 *.pyc
 __pycache__
 .vscode
-data/shapefiles
-data/compressed
+data/*
+

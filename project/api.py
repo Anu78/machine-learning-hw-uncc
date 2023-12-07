@@ -2,17 +2,14 @@ import asyncio
 import h5py
 import random
 import aiohttp
-from PIL import Image
-import io
 import numpy as np
 from dotenv import dotenv_values
 
 config = dotenv_values(".env")
 MAPS_KEY = config["MAPS_KEY"]
 
-
 class StreetViewAPI:
-    def __init__(self, imageSize, fov):
+    def __init__(self, imageSize, fov, batchSize, imagesPerState, csvPath):
         self.imageSize = imageSize
         self.fov = fov
         self.staticBaseURL = "https://maps.googleapis.com/maps/api/streetview"
@@ -21,13 +18,19 @@ class StreetViewAPI:
         )
         self.images = np.array([])
         self.coordinates = np.array([])
-        self.batchSize = 50
-        self.compressionStrength = 6
+        self.batchSize = batchSize
+        self.imagesPerState = imagesPerState
+        self.cur = 0
+        self.csvPath = csvPath
 
     async def generateURLs(self, coordinates, pitch=0):
         urls = []
         for lat, lng in coordinates:
-            heading = random.randint(0, 360)
+            heading = random.randint(0, 360 - 90)
+            url = f"{self.staticBaseURL}?size={self.imageSize[0]}x{self.imageSize[1]}&fov={self.fov}&location={lat},{lng}&heading={heading}&pitch={pitch}&key={MAPS_KEY}"
+            urls.append(url)
+            
+            heading = max(heading+90, 360)
             url = f"{self.staticBaseURL}?size={self.imageSize[0]}x{self.imageSize[1]}&fov={self.fov}&location={lat},{lng}&heading={heading}&pitch={pitch}&key={MAPS_KEY}"
             urls.append(url)
         return urls
@@ -47,7 +50,6 @@ class StreetViewAPI:
 
     async def fetchMultiple(self, urls):
         responses = []
-        n = len(urls) // self.batchSize
         for i in range(0, len(urls), self.batchSize):
             batch = urls[i : i + self.batchSize]
             async with aiohttp.ClientSession() as session:
@@ -62,15 +64,9 @@ class StreetViewAPI:
                 return await response.json()
             return await response.read()
 
-    async def saveImages(self, coordinates, path, batchSize=50):
-        self.batchSize = batchSize
-        print(
-            f"Starting the process to save images for {len(coordinates)} coordinates."
-        )
-
+    async def saveImages(self, coordinates):
         validatedCoordinates = await self.validateCoordinates(coordinates)
         self.coordinates = np.array(validatedCoordinates)
-        print(f"Number of coordinates after validation: {len(self.coordinates)}")
 
         imageUrls = await self.generateURLs(self.coordinates)
         byteDataList = await self.fetchMultiple(imageUrls)
@@ -80,48 +76,29 @@ class StreetViewAPI:
                 f"Warning: Number of fetched images ({len(byteDataList)}) does not match number of coordinates ({len(self.coordinates)})"
             )
 
-        imageList = []
-        for byteData in byteDataList:
-            try:
-                image = Image.open(io.BytesIO(byteData))
-                npImg = np.array(image, dtype=np.uint8)
-                imageList.append(npImg)
-            except Exception as e:
-                print(f"Error processing image: {e}")
+        self.images = byteDataList
 
-        self.images = np.array(imageList)
-        print(f"Number of images after fetching and processing: {len(self.images)}")
+        self.writeImages()
 
-        self.writeDataToFile(path)
+    def writeImages(self):
+        import os
+        path = "./data/valid_images/"
+        csvFile = open(self.csvPath, 'a')
+        os.makedirs(path, exist_ok=True)
 
-    def writeDataToFile(self, path, label):
-        # split dataset into training and validation
-        lenI = int(len(self.images) * 0.9)
-        lenC = int(len(self.coordinates) * 0.9)
-        print(f"Writing {lenI} images to {path}!")
-        with h5py.File(path, "w") as hdf:
-            hdf.create_dataset(
-                "trainImages",
-                data=self.images[:lenI],
-                compression="gzip",
-                compression_opts=self.compressionStrength,
-            )
-            hdf.create_dataset(
-                "validImages",
-                data=self.images[lenI:],
-                compression="gzip",
-                compression_opts=self.compressionStrength,
-            )
+        new_coordinates = []
+        for x, y in self.coordinates:
+            new_coordinates.append((x, y))
+            new_coordinates.append((x, y))
+        
+        coord_index = 0
 
-            hdf.create_dataset(
-                "trainCoords",
-                data=self.coordinates[:lenC],
-                compression="gzip",
-                compression_opts=self.compressionStrength,
-            )
-            hdf.create_dataset(
-                "validCoords",
-                data=self.coordinates[lenC:],
-                compression="gzip",
-                compression_opts=self.compressionStrength,
-            )
+        print("Writing images to file.")
+        for imageBytes in self.images:
+            with open(os.path.join(path, str(self.cur)+".png", ), 'wb') as image:
+                image.write(imageBytes)
+
+            csvFile.write(f"{self.cur}, {new_coordinates[coord_index][0]}, {new_coordinates[coord_index][1]}\n")
+            
+            self.cur += 1
+            coord_index += 1

@@ -1,85 +1,37 @@
 from __future__ import division
-import h5py
 from shapely.geometry import LineString
-import random
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import pandas as pd
 from shapely import get_x, get_y
-import os
-
 
 class Shapefile:
     def __init__(
         self,
         state,
+        locations,
         path=None,
     ):
         gpd.options.io_engine = "pyogrio"  # use the faster engine for geopandas
         self.gdf = None
+        
         if path is not None:
             self.gdf = gpd.read_file(path)
-            print(f"Initialized Shapefile of length {len(self.gdf)}")
-        self.LOC_EQUATION = (
-            lambda area: -0.0415168 * area * area + 8.4791 * area + 23.43
-        )
-        self.DIVER_EQUATION = lambda rank: 1.3 - ((rank - 1) * (0.6)) / (47)
-        self.state_diversity = {
-            "TX": 1,
-            "MT": 2,
-            "CA": 3,
-            "WA": 4,
-            "DE": 5,
-            "CO": 6,
-            "LA": 7,
-            "MD": 8,
-            "FL": 9,
-            "NJ": 10,
-            "ID": 11,
-            "OR": 12,
-            "NC": 13,
-            "UT": 14,
-            "RI": 15,
-            "OK": 16,
-            "MI": 17,
-            "HI": 18,
-            "NM": 18,
-            "WI": 19,
-            "OH": 20,
-            "MA": 21,
-            "MN": 22,
-            "SC": 23,
-            "NY": 24,
-            "TN": 25,
-            "VA": 26,
-            "WY": 27,
-            "SD": 28,
-            "CT": 29,
-            "KY": 30,
-            "GA": 31,
-            "MS": 32,
-            "AR": 33,
-            "NE": 34,
-            "MO": 35,
-            "PA": 36,
-            "AL": 37,
-            "IN": 38,
-            "KS": 39,
-            "AZ": 40,
-            "ND": 41,
-            "IL": 42,
-            "NV": 43,
-            "VT": 44,
-            "ME": 45,
-            "NH": 46,
-            "WV": 47,
-            "IA": 48,
-        }
-        
+            print(f"Initialized {len(self.gdf)} roads in {state}.")
+
+        # need to generate more locations to compensate for invalids later on
+        self.locations = locations
+    
+    def plotState(self):
+        res = self.generateCoordinates()
+
+        x = [i[1] for i in res]
+        y = [i[0] for i in res]
+
+        plt.scatter(x, y)
+        plt.show()
+
     def plot(self, size=5):
-        """
-        Plots the polygons in a shapefile
-        """
         if self.gdf is None:
             raise ValueError("You have not defined a gdf path.")
         _, ax = plt.subplots(figsize=(size, size))
@@ -89,29 +41,54 @@ class Shapefile:
         plt.ylabel("Latitude")
         plt.show()
 
-    def generateCoordinates(self, locations):
-        """
-        Returns a list of valid coordinates for each line in a shapefile, seperated by self.gridSpace
-        """
+    def __calculateDensityIncrement(self, gdf):
+        linestrings = [LineString(row) for row in gdf]
+        total = sum(line.length for line in linestrings)
+
+        box = gpd.GeoSeries(linestrings).unary_union.envelope 
+        area = box.area
+        density = total / area
+        print(density)
+        newInc = self.increment
+        if density >= 35 and density < 50:
+            newInc = self.increment * 5
+        elif density >= 50:
+            newInc = self.increment * 10
+        
+        return int(newInc)
+
+    def generateCoordinates(self):
+        import random
         if self.gdf is None:
             raise ValueError("You have not defined a gdf path.")
 
-        increment = len(self.gdf) // locations
+        l = len(self.gdf)
         coordinates = []
-        for i in range(0, len(self.gdf), increment):
+        i = 0
+        self.increment = l // self.locations
+        # recalc_interval = l // 20  # Interval at which to recalculate increment
+        # last_recalc_index = 0  # Tracks the last index where increment was recalculated
+        # inc = self.increment
+
+        while i < l:
             linestring = LineString(self.gdf.iloc[i]["geometry"])
-            rand = random.uniform(0, linestring.length)
-            point = linestring.interpolate(rand)
+            
+            r = random.uniform(0, linestring.length)
+            point = linestring.interpolate(r)
 
             coordinates.append((get_y(point), get_x(point)))
+
+            # # Check if it's time to recalculate increment for the next set of rows
+            # if i - last_recalc_index >= recalc_interval or i == 0:
+            #     next_segment_end = min(i + recalc_interval, l)
+            #     inc = self.__calculateDensityIncrement(gdf=self.gdf.iloc[i:next_segment_end]["geometry"])
+            #     last_recalc_index = i  # Update last recalculation index
+
+            i += self.increment
 
         return coordinates
 
     def combine(self, path):
-        """
-        Appends the supplied shapefile to the current object.
-        """
-
         try:
             if self.gdf is None:
                 self.gdf = gpd.read_file(path)
@@ -132,24 +109,13 @@ class Shapefile:
 
     def write(self, path):
         import os
-
-        """
-        Saves this shapefile object to disk. 
-        """
-        # Extract the directory from the provided path
         directory = os.path.dirname(path)
-
-        # Create the directory if it doesn't exist
         os.makedirs(directory, exist_ok=True)
 
-        # Save the GeoDataFrame to the specified path
         self.gdf.to_file(path)
 
 
 def distBetweenCoordinates(first, second, iterations=100) -> float:
-    """
-    Returns the distance between two lat/long pairs (in miles)
-    """
     from math import atan
     from math import atan2
     from math import cos
@@ -237,27 +203,3 @@ def distBetweenCoordinates(first, second, iterations=100) -> float:
     m = b * A * (sigma - delta_sig)
 
     return m * miles_conversion
-
-
-def filestream(path):
-    """
-    Returns an iterable of every shapefile in a list of folders.
-    """
-    iterable = []
-    for dir in os.listdir(path):
-        iterable.append(os.path.join(""))
-
-    return iterable
-
-
-def unpackHDF(path, validation):
-    with h5py.File(path, "r") as dataset:
-        keys = list(dataset.keys())
-        if not validation:
-            trainImages = dataset["trainImages"][:]
-            trainCoords = dataset["trainCoords"][:]
-            return trainImages, trainCoords
-        else:
-            validImages = dataset["validImages"][:]
-            validCoords = dataset["validCoords"][:]
-            return validImages, validCoords

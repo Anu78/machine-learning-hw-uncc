@@ -1,13 +1,8 @@
 import torch.nn as nn
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 import torch.nn.functional as F
-import torchvision.transforms as transforms
-import numpy as np
-import time
-from torchinfo import summary 
-from helpers import unpackHDF
-from helpers import distBetweenCoordinates
+from torchvision import transforms, datasets, models
 
 # select backend based on hardware
 global device
@@ -19,139 +14,94 @@ else:
     device = torch.device("cpu")
     print("No GPU hardware found.")
 
-class ImageDataset(Dataset):
-    def __init__(self, validation):
-        self.images, self.coords = unpackHDF("./data/compressed/NC.h5", validation=validation)
+class RemoveGoogleLogo(object):
+    def __init__(self, num_pixels):
+        self.num_pixels = num_pixels
 
-        self.images = torch.Tensor(self.images)
-        self.images = self.images.permute(0,3,1,2)
+    def __call__(self, img):
+        """
+        Args:
+            img (Tensor): Image tensor of size (C, H, W).
 
-    def __len__(self):
-        return len(self.coords)
-
-    def __getitem__(self, idx):
-        image = np.array(self.images[idx] / 255, dtype=np.float32)
-        location = np.array(self.coords[idx], dtype=np.float16)
-
-        return torch.Tensor(image), torch.Tensor(location)
-
-class ClassificationModel(nn.Module):
-    def __init__(self):
-        super(ClassificationModel, self).__init__()
-        self.conv1 = nn.Conv2d(3, 32, 3, padding=1)
-        self.conv2 = nn.Conv2d(32, 64, 3, padding=1)
-        self.conv3 = nn.Conv2d(64, 128, 3, padding=1)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.dropout = nn.Dropout(0.5)
-        self.fc1 = nn.Linear(128 * 4 * 4, 512)
-        self.fc2 = nn.Linear(512, 256)
-        self.fc3 = nn.Linear(256, 50)
-
-    def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
-        x = self.pool(F.relu(self.conv3(x)))
-        x = x.view(-1, 128 * 4 * 4)  # Flatten
-        x = self.dropout(x)
-        x = F.relu(self.fc1(x))
-        x = self.dropout(x)
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-        return x
-
-class RegressionModel(nn.Module):
-    def __init__(self):
-        super(RegressionModel, self).__init__()
-        # 640x480 input image, 3 channels
-
-        # convolution layers (reduced number and filters)
-        self.conv1 = nn.Conv2d(3, 8, kernel_size=3, padding=1, stride=1)
-        self.conv2 = nn.Conv2d(8, 16, kernel_size=3, padding=1, stride=1)
-        
-        # max pooling layer
-        self.pool = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
-
-        # modified fully connected layer
-        self.fc1 = nn.Linear(16 * 120 * 160, 256) # Adjusted for reduced layer size
-        self.fc2 = nn.Linear(256, 2) # Output layer
-
-    def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
-
-        x = x.view(-1, 16 * 120 * 160) # flatten output
-
-        x = F.relu(self.fc1(x))
-        x = self.fc2(x) # output
-
-        return x
+        Returns:
+            Tensor: Transformed image with bottom pixels removed.
+        """
+        # Check if the image has enough pixels to remove
+        if img.size(1) > self.num_pixels:
+            img = img[:, :-self.num_pixels, :]
+        return img
 
 def train(epochs, batchSize, shuffle, lr):
-    traindataset = ImageDataset(validation=False)
-    trainloader = DataLoader(traindataset, shuffle=shuffle, batch_size=batchSize)
+    transform = transforms.Compose([
+    transforms.ToTensor()
+])
 
-    model = ClassificationModel()
-    model.to(device)
+    train_dataset = datasets.ImageFolder(root='./data/compressed/images', transform=transform)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batchSize, shuffle=shuffle)
 
-    lossFn = nn.CrossEntropyLoss()
+    # Similar for validation and test datasets
+
+    # 2. Model Architecture
+    model = models.resnet18(pretrained=True)
+    
+    num_features = model.fc.in_features
+    model.fc = nn.Linear(num_features, 50)  # 50 classes for 50 states
+
+    criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
-    start = time.time()
-    for i in range(epochs):
-        totalLoss = 0  # Reset total loss for each epoch
+    # Training loop
+    for epoch in range(epochs):
+        total_loss = 0
+        num_batches = 0
 
-        for images, coords in trainloader:
-            images, coords = images.to(device), coords.to(device)
-            predCoords = model(images)
-            loss = lossFn(predCoords, coords)
-
+        for inputs, labels in train_loader:
             optimizer.zero_grad()
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
 
-            totalLoss += loss.item()
+            total_loss += loss.item()
+            num_batches += 1
 
-        avg_loss = totalLoss / len(trainloader)
-        print(f"Epoch [{i+1}/{epochs}], Average Loss: {avg_loss:.4f}")
-    end = time.time()
-
-    print(f"training time: {end-start:.2f}")
+        average_loss = total_loss / num_batches
+        print(f"Epoch {epoch + 1}/{epochs} - Average Loss: {average_loss:.4f}")
 
     print(f"Saving model to ./data/models/model.pth")
     torch.save(model.state_dict(), "./data/models/model.pth")
 
-def validate():
-    # validation dataloader
-    validDataset = ImageDataset(validation=True)
-    validLoader = DataLoader(validDataset, batch_size=64)
+def validate(model, batch_size=32):
+    # Define the model architecture (should match the architecture of the saved model)
+    # model = models.resnet18()
+    # num_features = model.fc.in_features
+    # model.fc = nn.Linear(num_features, 50)  # 50 classes for 50 states
 
-    # load model from file
-    model = ClassificationModel()
-    model.load_state_dict(torch.load("./data/models/model.pth"))
-    model.to(device)
+    # # Load the model from the .pth file
+    # model.load_state_dict(torch.load(model_path, map_location=device))
+    # model.to(device)
+
+    # Load the validation dataset
+    transform = transforms.Compose([transforms.ToTensor(), RemoveGoogleLogo(22)])
+    val_dataset = datasets.ImageFolder(root='/content/valid_images', transform=transform)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+
+    # Ensure the model is in evaluation mode
     model.eval()
 
-    total_distance = 0
-    total_samples = 0
+    # Variables to store predictions and labels
+    all_preds = []
+    all_labels = []
 
     with torch.no_grad():
-        for images, actual_coords in validLoader:
-            images, actual_coords = images.to(device), actual_coords.to(device)
-
-            predicted_coords = model(images)
-            predicted_coords = predicted_coords.cpu().numpy()
-            actual_coords = actual_coords.cpu().numpy()
-
-            for pred, actual in zip(predicted_coords, actual_coords):
-                distance = distBetweenCoordinates((pred[0], pred[1]), (actual[0], actual[1]))
-                total_distance += distance
-                total_samples += 1
-
-    avg_distance = total_distance / total_samples
-    print(f"Average distance error: {avg_distance} miles")
-    return avg_distance
+            acc = 0
+            count = 0
+            for inputs, labels in val_loader:
+                y_pred = model(inputs)
+                acc += (torch.argmax(y_pred, 1) == labels).float().sum()
+                count += len(labels)
+            acc /= count
+            print(f"Accuracy: {acc:.4f}")
 
 def evaluate(image):
     pass
-
-summary(RegressionModel(), (32, 3, 480, 640))
