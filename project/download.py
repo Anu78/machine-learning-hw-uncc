@@ -15,6 +15,7 @@ fips_csv = "./data/fips.csv"
 df = pd.read_csv(fips_csv)
 
 def combine(stateCode, tempPath):
+    
     stateShapefile = Shapefile()
 
     for dir in os.listdir(tempPath):

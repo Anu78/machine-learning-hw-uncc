@@ -1,5 +1,4 @@
 .env
-data/models
 *.pyc
 __pycache__
 .vscode

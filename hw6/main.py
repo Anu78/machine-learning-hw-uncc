@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import torchvision.transforms as transforms
 import torchvision
 import time
-
+from torchinfo import summary
 """
 check if device supports mps
 """
@@ -262,4 +262,6 @@ def part2(model_complexity: bool):
 
 
 if __name__ == "__main__":
-    part2(True)
+    
+    #part2(True)
+    summary(CNN(), input_size=(100, 3, 32, 32))

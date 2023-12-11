@@ -1,5 +1,4 @@
 import asyncio
-import h5py
 import random
 import aiohttp
 import numpy as np
