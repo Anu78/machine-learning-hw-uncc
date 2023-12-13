@@ -218,13 +218,13 @@ def part2(model_complexity: bool):
     )
 
     # define & move model
-    model = CifarModel2() if model_complexity else CifarModel1()
+    # model = CifarModel2() if model_complexity else CifarModel1()
     model = CNN()
     model.to(mps_device)
 
     # setup optimizer and loss function
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0005)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
 
     # custom training loop
     start_time = time.time()
@@ -263,5 +263,5 @@ def part2(model_complexity: bool):
 
 if __name__ == "__main__":
     
-    #part2(True)
+    part2(True)
     summary(CNN(), input_size=(100, 3, 32, 32))
