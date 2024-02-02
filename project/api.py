@@ -5,8 +5,17 @@ import numpy as np
 from dotenv import dotenv_values
 
 config = dotenv_values(".env")
-MAPS_KEY = config["MAPS_KEY"]
+apiKey = config["MAPS_KEY"]
 
+def getSingleCoordinate(lat, long): 
+    pass
+
+class FetchImages():    
+    def __call__(self, coordinates): 
+        pass
+
+    # get every coordinate
+        
 class StreetViewAPI:
     def __init__(self, imageSize, fov, batchSize, imagesPerState, csvPath):
         self.imageSize = imageSize
@@ -26,17 +35,17 @@ class StreetViewAPI:
         urls = []
         for lat, lng in coordinates:
             heading = random.randint(0, 360 - 90)
-            url = f"{self.staticBaseURL}?size={self.imageSize[0]}x{self.imageSize[1]}&fov={self.fov}&location={lat},{lng}&heading={heading}&pitch={pitch}&key={MAPS_KEY}"
+            url = f"{self.staticBaseURL}?size={self.imageSize[0]}x{self.imageSize[1]}&fov={self.fov}&location={lat},{lng}&heading={heading}&pitch={pitch}&key={self.key}"
             urls.append(url)
             
             heading = max(heading+90, 360)
-            url = f"{self.staticBaseURL}?size={self.imageSize[0]}x{self.imageSize[1]}&fov={self.fov}&location={lat},{lng}&heading={heading}&pitch={pitch}&key={MAPS_KEY}"
+            url = f"{self.staticBaseURL}?size={self.imageSize[0]}x{self.imageSize[1]}&fov={self.fov}&location={lat},{lng}&heading={heading}&pitch={pitch}&key={self.key}"
             urls.append(url)
         return urls
 
     async def validateCoordinates(self, coordinates):
         urls = [
-            f"{self.metadataBaseURL}?location={lat},{lng}&key={MAPS_KEY}"
+            f"{self.metadataBaseURL}?location={lat},{lng}&key={self.key}"
             for lat, lng in coordinates
         ]
         responses = await self.fetchMultiple(urls)
@@ -101,3 +110,5 @@ class StreetViewAPI:
             
             self.cur += 1
             coord_index += 1
+    async def getSingleLocation(lat, long): 
+        pass
