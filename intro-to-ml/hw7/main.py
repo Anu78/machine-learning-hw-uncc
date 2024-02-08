@@ -1,4 +1,4 @@
-### resnet training for cifar-10 dataset 
+### resnet training for cifar-10 dataset
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
@@ -10,10 +10,12 @@ import time
 """
 check if device supports mps
 """
-global mps_device
+mps_device = None
 # check for apple silicon support
 if torch.backends.mps.is_available():
     mps_device = torch.device("mps")  # temporarily disabled mps
+elif torch.cuda.is_available():
+    mps_device = torch.device("cuda")
 else:
     print("MPS device not found.")
 
