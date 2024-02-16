@@ -95,7 +95,7 @@ def ResNet10():
     return ResNet(BasicBlock, [2, 2, 2, 2, 2])
 
 
-def part2(model_complexity: bool):
+def part2():
     # load cifar10 dataset
     transform = transforms.Compose(
         [transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
@@ -158,4 +158,7 @@ def part2(model_complexity: bool):
     print(f"final model accuracy is {accuracy:.2f}%")
 
 def main():
-    pass
+    part2()
+
+
+main()

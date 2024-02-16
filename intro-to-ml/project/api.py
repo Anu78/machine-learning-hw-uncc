@@ -3,13 +3,13 @@ import random
 import aiohttp
 import numpy as np
 from dotenv import dotenv_values
+import matplotlib as plt 
 
 config = dotenv_values(".env")
 apiKey = config["MAPS_KEY"]
 
 def getSingleCoordinate(lat, long): 
-    pass
-
+   pass 
 class FetchImages():    
     def __call__(self, coordinates): 
         pass
