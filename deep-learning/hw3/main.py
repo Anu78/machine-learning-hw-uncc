@@ -109,3 +109,6 @@ for epoch in range(epochs):
     print(f'Epoch {epoch+1}/{epochs}, Loss: {average_loss:.4f}')
 
     # You can add any validation logic here
+
+# save model 
+torch.save(model.state_dict(), "./model.pth")
