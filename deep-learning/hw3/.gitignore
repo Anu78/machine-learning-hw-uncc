@@ -1,1 +1,6 @@
 input.txt
+.ipynb_checkpoints
+best_model.pt
+shakes.txt
+models/
+
