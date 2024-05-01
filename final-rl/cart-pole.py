@@ -23,7 +23,7 @@ class CartPoleModel(nn.Module):
         return self.layer3(x) # No activation on the output
 
 model = CartPoleModel(4,2).to(device)
-model.load_state_dict(torch.load("./target.pth"))
+model.load_state_dict(torch.load("./target.pth", map_location=device))
 model.eval()
 env = gym.make("CartPole-v1", render_mode="human")
 num_episodes = 10000
