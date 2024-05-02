@@ -9,7 +9,7 @@ import random
 
 device = torch.device("mps")
 
-env = gym.make("ALE/Asteroids-v5", render_mode="human")
+env = gym.make("ALE/Asteroids-v5", render_mode="human", difficulty=3)
 
 print(env.observation_space.shape)
 print(env.action_space.n)
