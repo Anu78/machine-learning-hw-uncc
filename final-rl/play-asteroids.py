@@ -6,11 +6,12 @@ import torch.optim as optim
 import torch.nn.functional as F
 import numpy as np
 import random
+import time
 
 device = torch.device("mps")
 
 env = gym.make("ALE/Asteroids-v5", render_mode="human", difficulty=3, full_action_space=False, obs_type="ram")
-
+env.metadata["render_fps"] = 30 
 print(env.observation_space.shape)
 print(env.action_space.n)
 
@@ -18,13 +19,11 @@ class DQN(nn.Module):
     def __init__(self):
         super(DQN, self).__init__()
         self.fc_layers = nn.Sequential(
-            nn.Linear(128, 256),
+            nn.Linear(128, 64),
             nn.ReLU(),
-            nn.Linear(256, 128),
+            nn.Linear(64, 32),
             nn.ReLU(),
-            nn.Linear(128, 32),
-            nn.ReLU(),
-            nn.Linear(32, 14)   
+            nn.Linear(32, 14),
         )
     
     def forward(self, x):
@@ -42,9 +41,12 @@ for episode in range(1):
     while not done:
         state = torch.tensor(observation, dtype=torch.float32, device=device)
         action = model(state).argmax()
-        print(action)
+        
+        print(state.shape)
 
         observation, reward, done, _, info = env.step(action.item())
+        print(observation)
         env.render()
+        time.sleep(3)
 
     print(f"Episode {episode}: Reward = {episode_reward}")

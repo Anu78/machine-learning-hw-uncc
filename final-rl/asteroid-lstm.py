@@ -15,7 +15,7 @@ import numpy as np
 
 
 # increase difficulty to penalize the ai for staying still (more asteroids)
-env = gym.make("ALE/Asteroids-v5", difficulty=2, full_action_space=False, obs_type="rgb")
+env = gym.make("ALE/Asteroids-v5", difficulty=3, full_action_space=False, obs_type="rgb")
 
 # print action space 
 print(env.observation_space.shape) # print size of state
@@ -134,8 +134,8 @@ LSTM_CONTEXT = 5 # how many previous frames to consider when making a decision
 
 
 memory = ReplayMemory(10_000) # replay memory max size
-policy_model = DQN().to(device) 
-target_model = DQN().to(device)
+policy_model = DQN(14).to(device) 
+target_model = DQN(14).to(device)
 
 
 target_model.load_state_dict(policy_model.state_dict()) # policy model and target model have the same weights at initialization
@@ -156,48 +156,42 @@ render = True
 
 for i_episode in range(num_episodes):
     state, info = env.reset()
-    state = torch.tensor(state,dtype=torch.float32,device=device).permute(2,1,0)
-    current_lives = info["lives"] # intialize # of lives from environment
-    frame_count = 0 # to skip frames
-    intermediate_frames = [] # store frames to be used in LSTM
+    state = torch.tensor(state, dtype=torch.float32, device=device).permute(2,1,0)
+    current_lives = info["lives"]
+    state_buffer = deque(maxlen=LSTM_CONTEXT)  
 
-    # save model every 20 episodes
-    if i_episode % 20 == 0:
-        torch.save(policy_model.state_dict(), "./policy_model.pth")
-        torch.save(target_model.state_dict(), "./target_model.pth")
+    for _ in range(LSTM_CONTEXT):
+        state_buffer.append(state)
 
     for t in count():
-        action = select_action(state)
-        observation, reward, terminated, truncated, info = env.step(action.item())
-
-        if info['lives'] < current_lives:
-            reward -= 300 # significant penalty for losing a life (getting hit by an asteroid)
-            current_lives = info['lives']  
-
-        reward += 2 # reward for staying alive every frame
-        reward = torch.tensor([reward], device=device)
-        done = terminated or truncated
-
-        if terminated:
-            next_state = None
+        if len(state_buffer) == LSTM_CONTEXT:
+            state_seq = torch.stack(list(state_buffer), dim=0).unsqueeze(0)  
+            action = select_action(state_seq)
         else:
-            next_state = torch.tensor(observation, dtype=torch.float32, device=device).permute(2,1,0)
+            action = torch.tensor([env.action_space.sample()], device=device, dtype=torch.long)
 
-        if action.dim() == 0:
-            print("0 dim action tensor", action)
+        observation, reward, terminated, truncated, info = env.step(action.item())
         
-        # push intermediate frames to memory
-        intermediate_frames.append((state, action, next_state, reward))
+        reward_base = 2  
+        if info['lives'] < current_lives:
+            reward_base -= 300  
+            current_lives = info['lives']
 
-        if frame_count % LSTM_CONTEXT == 0 and frame_count != 0:
-            memory.push([frame for frame in intermediate_frames])
-            intermediate_frames.clear()
+        reward = torch.tensor([reward_base], device=device)
+        done = terminated or truncated
+        next_state = torch.tensor(observation, dtype=torch.float32, device=device).permute(2,1,0) if not terminated else None
+
+        if next_state is not None:
+            state_buffer.append(next_state)
+
+        if next_state is not None:
+            memory.push((state, action, next_state, reward))
 
         state = next_state
 
         optimize_model()
 
-        # soft update target network using tau
+        # Soft update the target network
         if steps_done % UPDATE_TARGET_EVERY == 0:
             for target_param, source_param in zip(target_model.parameters(), policy_model.parameters()):
                 target_param.data.copy_(target_param.data * (1.0 - TAU) + source_param.data * TAU)
@@ -205,5 +199,6 @@ for i_episode in range(num_episodes):
         if done:
             print(f"on episode {i_episode}, which lasted {t} frames")
             break
+
 
 print('Complete')

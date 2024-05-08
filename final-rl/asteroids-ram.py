@@ -12,9 +12,10 @@ import torch.optim as optim
 import torch.nn.functional as F
 
 import numpy as np
+import cv2 
 
 # increase difficulty to penalize the ai for staying still (more asteroids)
-env = gym.make("ALE/Asteroids-v5", difficulty=3, full_action_space=False, obs_type="ram")
+env = gym.make("ALE/Asteroids-v5", difficulty=3, full_action_space=False, obs_type="ram", render_mode="rgb_array")
 
 # print action space 
 print(env.action_space) # 14 possible actions
@@ -42,19 +43,16 @@ class ReplayMemory(object):
     def __len__(self):
         return len(self.memory)
 
-
 # takes a state from the game and estimates rewards for each action
 class DQN(nn.Module):
     def __init__(self):
         super(DQN, self).__init__()
         self.fc_layers = nn.Sequential(
-            nn.Linear(128, 256),
+            nn.Linear(128, 64),
             nn.ReLU(),
-            nn.Linear(256, 128),
+            nn.Linear(64, 32),
             nn.ReLU(),
-            nn.Linear(128, 32),
-            nn.ReLU(),
-            nn.Linear(32, 14)   
+            nn.Linear(32, 14),
         )
     
     def forward(self, x):
@@ -121,13 +119,13 @@ BATCH_SIZE = 256 # how many experiences to sample from
 GAMMA = 0.70 # discount factor; how much to value future rewards
 EPS_START = 0.2 # what percent of actions are random, at the start
 EPS_END = 0.01 # what percent of actions are random, at the end 
-EPS_DECAY = 0.000002 # every step, the epsilon value will decay by this amount
+EPS_DECAY = 0.00002 # every step, the epsilon value will decay by this amount
 TAU = 0.005 # how much to update the target network by
 LR = 1e-4 # learning rate for AdamW
 UPDATE_TARGET_EVERY = 20000 # how often to update the target network
 
 
-memory = ReplayMemory(30_000) # replay memory max size
+memory = ReplayMemory(20_000) # replay memory max size
 policy_model = DQN().to(device) 
 target_model = DQN().to(device)
 target_model.load_state_dict(policy_model.state_dict()) # polcy model and target model have the same weights
@@ -147,10 +145,9 @@ num_episodes = 1000
 
 for i_episode in range(num_episodes):
     state, info = env.reset()
-    state = torch.tensor(state,dtype=torch.float32,device=device).unsqueeze(0) # shape = [128]
+    state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
     current_lives = info["lives"] # intialize # of lives from environment
     episode_reward = 0 # track rewards per episode
-    render = False 
 
     if i_episode % 20 == 0:
         torch.save(policy_model.state_dict(), "./policy_model.pth")
@@ -161,12 +158,8 @@ for i_episode in range(num_episodes):
         observation, reward, terminated, truncated, info = env.step(action.item())
 
         if info['lives'] < current_lives:
-            reward -= 400
+            reward -= 250
             current_lives = info['lives']  
-
-        # penalize staying still (noop = 0)
-        if action.item() == 0:
-            reward -= 10
 
         # give 2 for just being alive 
         reward += 2
@@ -179,8 +172,6 @@ for i_episode in range(num_episodes):
         else:
             next_state = torch.tensor(observation, dtype=torch.float32, device=device).unsqueeze(0)
 
-        if action.dim() == 0:
-            print("0 dim action tensor", action)
         memory.push(state, action, next_state, reward)
 
         state = next_state
@@ -189,11 +180,8 @@ for i_episode in range(num_episodes):
 
         if steps_done % UPDATE_TARGET_EVERY == 0:
             # update target network using tau
-            target_net_state_dict = target_model.state_dict()
-            policy_net_state_dict = policy_model.state_dict()
-            for key in policy_net_state_dict:
-                target_net_state_dict[key] = policy_net_state_dict[key] * TAU + target_net_state_dict[key] * (1 - TAU)
-            target_model.load_state_dict(target_net_state_dict)
+            for target_param, policy_param in zip(target_model.parameters(), policy_model.parameters()):
+                target_param.data.copy_(torch.lerp(policy_param.data, target_param.data, 1 - TAU))
 
         if done:
             print(f"on episode {i_episode}, which lasted {t} frames. reward: {episode_reward}")
