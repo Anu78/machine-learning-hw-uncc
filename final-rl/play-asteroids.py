@@ -42,11 +42,7 @@ for episode in range(1):
         state = torch.tensor(observation, dtype=torch.float32, device=device)
         action = model(state).argmax()
         
-        print(state.shape)
-
         observation, reward, done, _, info = env.step(action.item())
         print(observation)
-        env.render()
-        time.sleep(3)
 
     print(f"Episode {episode}: Reward = {episode_reward}")
